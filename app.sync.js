@@ -1,6 +1,6 @@
 // File: app.sync.js
 window.AppSync = (function () {
-  function removeLeafletLayer(savedGroup, unsavedGroup, item) {
+  function removeLayer(savedGroup, unsavedGroup, item) {
     if (!item || !item.leafletLayer) return;
     savedGroup.removeLayer(item.leafletLayer);
     unsavedGroup.removeLayer(item.leafletLayer);
@@ -15,16 +15,13 @@ window.AppSync = (function () {
     const createLayer = args.createLayer;
     const renderSidebar = args.renderSidebar;
 
-    const currentActiveId = state.activeId;
     const unsavedItems = state.items.filter(function (x) { return !x.saved; });
 
-    state.items
-      .filter(function (x) { return x.saved; })
-      .forEach(function (item) {
-        removeLeafletLayer(savedGroup, unsavedGroup, item);
-      });
+    state.items.filter(function (x) { return x.saved; }).forEach(function (item) {
+      removeLayer(savedGroup, unsavedGroup, item);
+    });
 
-    const rebuiltSavedItems = rows.map(function (row) {
+    const rebuilt = rows.map(function (row) {
       const item = AppHelpers.makeItem(
         {
           title: row.title,
@@ -32,33 +29,26 @@ window.AppSync = (function () {
           category: row.category,
           notes: row.notes,
           sourceType: row.sourceType,
-          uploadedAt: row.uploadedAt
+          uploadedAt: row.uploadedAt,
+          visible: row.visible,
+          lockOwner: row.lockOwner,
+          lockedAt: row.lockedAt
         },
         row.geojson,
         true,
         row.docId,
         row.color
       );
-
-      createLayer(item, savedGroup);
+      if (item.visible !== false) createLayer(item, savedGroup);
       return item;
     });
 
-    state.items = unsavedItems.concat(rebuiltSavedItems);
-
-    const activeStillExists = state.items.some(function (x) {
-      return x.id === currentActiveId;
-    });
-
-    if (!activeStillExists) {
-      state.activeId = null;
-    }
-
+    state.items = unsavedItems.concat(rebuilt);
     renderSidebar();
   }
 
   return {
-    removeLeafletLayer: removeLeafletLayer,
+    removeLayer: removeLayer,
     syncSavedRows: syncSavedRows
   };
 })();
