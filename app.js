@@ -10,6 +10,7 @@
   const db = firebase.firestore();
 
   const map = L.map("map", { preferCanvas: true }).setView([24.7136, 46.6753], 6);
+
   const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: "&copy; OpenStreetMap contributors"
   }).addTo(map);
@@ -29,12 +30,22 @@
     { collapsed: false }
   ).addTo(map);
 
-  map.addControl(new L.Control.Draw({
-    edit: { featureGroup: editableGroup, remove: false },
-    draw: { rectangle: true, polygon: true, polyline: false, circle: false, circlemarker: false, marker: false }
-  }));
+  map.addControl(
+    new L.Control.Draw({
+      edit: { featureGroup: editableGroup, remove: false },
+      draw: {
+        rectangle: true,
+        polygon: true,
+        polyline: false,
+        circle: false,
+        circlemarker: false,
+        marker: false
+      }
+    })
+  );
 
   const state = { items: [], activeId: null };
+
   const els = {
     fileInput: document.getElementById("fileInput"),
     datasetTitle: document.getElementById("datasetTitle"),
@@ -53,16 +64,22 @@
     toggleSidebar: document.getElementById("toggleSidebar")
   };
 
-  function setStatus(text) { GisUI.setStatus(els, text); }
-  function clearEditState() { editableGroup.clearLayers(); }
+  function setStatus(text) {
+    GisUI.setStatus(els, text);
+  }
 
-  function renderSidebar() { AppSidebar.render(state, els, actions); }
+  function clearEditState() {
+    editableGroup.clearLayers();
+  }
+
+  function renderSidebar() {
+    AppSidebar.render(state, els, actions);
+  }
 
   function removeLeafletLayer(item) {
     if (!item || !item.leafletLayer) return;
     savedGroup.removeLayer(item.leafletLayer);
     unsavedGroup.removeLayer(item.leafletLayer);
-    editableGroup.removeLayer(item.leafletLayer);
     item.leafletLayer = null;
   }
 
@@ -77,18 +94,27 @@
   }
 
   function syncSavedRows(rows) {
-    state.items.filter(function (x) { return x.saved; }).forEach(removeLeafletLayer);
+    state.items
+      .filter(function (x) { return x.saved; })
+      .forEach(removeLeafletLayer);
+
     state.items = state.items.filter(function (x) { return !x.saved; });
 
     rows.forEach(function (row) {
-      addItem({
-        title: row.title,
-        owner: row.owner,
-        category: row.category,
-        notes: row.notes,
-        sourceType: row.sourceType,
-        uploadedAt: row.uploadedAt
-      }, row.geojson, true, row.docId, row.color);
+      addItem(
+        {
+          title: row.title,
+          owner: row.owner,
+          category: row.category,
+          notes: row.notes,
+          sourceType: row.sourceType,
+          uploadedAt: row.uploadedAt
+        },
+        row.geojson,
+        true,
+        row.docId,
+        row.color
+      );
     });
 
     renderSidebar();
@@ -111,7 +137,9 @@
 
     item.leafletLayer.eachLayer(function (layer) {
       editableGroup.addLayer(layer);
-      if (layer.editing && typeof layer.editing.enable === "function") layer.editing.enable();
+      if (layer.editing && typeof layer.editing.enable === "function") {
+        layer.editing.enable();
+      }
     });
 
     GisUI.fitToLayer(map, item.leafletLayer);
@@ -121,13 +149,21 @@
 
   async function updateGeoJsonFromEditable(item) {
     const features = [];
+
     editableGroup.eachLayer(function (layer) {
       const gj = typeof layer.toGeoJSON === "function" ? layer.toGeoJSON() : null;
       if (!gj) return;
-      if (gj.type === "FeatureCollection") gj.features.forEach(function (f) { features.push(f); });
-      else if (gj.type === "Feature") features.push(gj);
+
+      if (gj.type === "FeatureCollection") {
+        gj.features.forEach(function (f) { features.push(f); });
+      } else if (gj.type === "Feature") {
+        features.push(gj);
+      }
     });
-    if (features.length > 0) item.geojson = { type: "FeatureCollection", features: features };
+
+    if (features.length > 0) {
+      item.geojson = { type: "FeatureCollection", features: features };
+    }
   }
 
   async function saveItem(id) {
@@ -141,11 +177,17 @@
 
       item.docId = await AppStorage.saveItem(db, item);
       item.saved = true;
+
       removeLeafletLayer(item);
       state.items = state.items.filter(function (x) { return x.id !== item.id; });
       state.activeId = null;
       clearEditState();
       renderSidebar();
+
+      const rows = await AppStorage.loadAll(db);
+      syncSavedRows(rows);
+      GisUI.zoomAll(map, savedGroup, unsavedGroup);
+
       setStatus("Saved successfully");
       alert("Saved successfully");
     } catch (err) {
@@ -161,16 +203,32 @@
     try {
       await AppStorage.deleteItem(db, item);
       removeLeafletLayer(item);
+
       state.items = state.items.filter(function (x) { return x.id !== id; });
+
       if (state.activeId === id) {
         state.activeId = null;
         clearEditState();
       }
+
       renderSidebar();
       setStatus("Removed: " + item.title);
     } catch (err) {
       alert("Delete error: " + err.message);
       setStatus("Delete failed");
+    }
+  }
+
+  async function loadDatabaseLayers() {
+    try {
+      setStatus("Loading database layers...");
+      const rows = await AppStorage.loadAll(db);
+      syncSavedRows(rows);
+      GisUI.zoomAll(map, savedGroup, unsavedGroup);
+      setStatus("Database loaded");
+    } catch (err) {
+      alert("Database load error: " + err.message);
+      setStatus("Database load failed");
     }
   }
 
@@ -183,10 +241,15 @@
       const sourceType = AppHelpers.sourceTextFromFileName(name);
       let geojson = null;
 
-      if (sourceType === "KMZ") geojson = await GisParsers.parseKmz(await file.arrayBuffer());
-      else if (sourceType === "KML") geojson = await GisParsers.parseKmlText(await file.text());
-      else if (sourceType === "ZIP Shapefile" || sourceType === "SHP") geojson = await GisParsers.parseShpZip(await file.arrayBuffer());
-      else throw new Error("Supported files: KMZ, KML, ZIP Shapefile, SHP");
+      if (sourceType === "KMZ") {
+        geojson = await GisParsers.parseKmz(await file.arrayBuffer());
+      } else if (sourceType === "KML") {
+        geojson = await GisParsers.parseKmlText(await file.text());
+      } else if (sourceType === "ZIP Shapefile" || sourceType === "SHP") {
+        geojson = await GisParsers.parseShpZip(await file.arrayBuffer());
+      } else {
+        throw new Error("Supported files: KMZ, KML, ZIP Shapefile, SHP");
+      }
 
       addItem(AppHelpers.collectMeta(els, name, sourceType), geojson, false, null);
       setStatus("Imported: " + name);
@@ -197,7 +260,10 @@
   }
 
   function clearUnsaved() {
-    state.items.filter(function (x) { return !x.saved; }).forEach(removeLeafletLayer);
+    state.items
+      .filter(function (x) { return !x.saved; })
+      .forEach(removeLeafletLayer);
+
     state.items = state.items.filter(function (x) { return x.saved; });
     state.activeId = null;
     clearEditState();
@@ -207,6 +273,7 @@
 
   function startRealtimeSync() {
     setStatus("Connecting database...");
+
     AppStorage.watchAll(
       db,
       function (rows) {
@@ -221,16 +288,27 @@
     );
   }
 
-  const actions = { focusItem: focusItem, enableEdit: enableEdit, saveItem: saveItem, removeItem: removeItem };
+  const actions = {
+    focusItem: focusItem,
+    enableEdit: enableEdit,
+    saveItem: saveItem,
+    removeItem: removeItem
+  };
 
   map.on(L.Draw.Event.CREATED, function (e) {
-    addItem(AppHelpers.collectMeta(els, "Drawn Layer", "Draw"), GisParsers.normalizeGeoJson(e.layer.toGeoJSON()), false, null);
+    addItem(
+      AppHelpers.collectMeta(els, "Drawn Layer", "Draw"),
+      GisParsers.normalizeGeoJson(e.layer.toGeoJSON()),
+      false,
+      null
+    );
     enableEdit(state.activeId);
   });
 
   map.on(L.Draw.Event.EDITED, async function () {
     const item = state.items.find(function (x) { return x.id === state.activeId; });
     if (!item) return;
+
     try {
       await updateGeoJsonFromEditable(item);
       removeLeafletLayer(item);
@@ -248,15 +326,23 @@
   });
 
   els.saveSelectedBtn.addEventListener("click", async function () {
-    const item = state.items.find(function (x) { return x.id === state.activeId && !x.saved; }) ||
-                 state.items.find(function (x) { return !x.saved; });
-    if (!item) return alert("No unsaved layer selected.");
+    const item =
+      state.items.find(function (x) { return x.id === state.activeId && !x.saved; }) ||
+      state.items.find(function (x) { return !x.saved; });
+
+    if (!item) {
+      alert("No unsaved layer selected.");
+      return;
+    }
+
     await saveItem(item.id);
   });
 
-  els.refreshDbBtn.addEventListener("click", startRealtimeSync);
+  els.refreshDbBtn.addEventListener("click", loadDatabaseLayers);
   els.clearUnsavedBtn.addEventListener("click", clearUnsaved);
-  els.zoomAllBtn.addEventListener("click", function () { GisUI.zoomAll(map, savedGroup, unsavedGroup); });
+  els.zoomAllBtn.addEventListener("click", function () {
+    GisUI.zoomAll(map, savedGroup, unsavedGroup);
+  });
   els.searchBox.addEventListener("input", renderSidebar);
 
   els.toggleSidebar.addEventListener("click", function () {
