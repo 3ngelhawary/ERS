@@ -4,32 +4,42 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
 }).addTo(map);
 
-// Load polygons from local GeoJSON
-fetch('data/polygons.geojson')
-.then(res => res.json())
-.then(data => {
-    L.geoJSON(data, {
-        style: { color: 'blue', weight: 2 },
-        onEachFeature: function (feature, layer) {
-            layer.on('click', function() {
-                alert('Polygon clicked: ' + feature.properties.name);
+// Handle file upload
+document.getElementById('file-input').addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    var reader = new FileReader();
+
+    if(file.name.endsWith('.shp') || file.name.endsWith('.zip')) {
+        // Shapefile / zipped shapefile
+        reader.onload = function() {
+            shp(reader.result).then(function(geojson) {
+                L.geoJSON(geojson, {style:{color:'blue'}}).addTo(map);
+                map.fitBounds(L.geoJSON(geojson).getBounds());
             });
-        }
-    }).addTo(map);
+        };
+        reader.readAsArrayBuffer(file);
+    }
+    else if(file.name.endsWith('.kmz') || file.name.endsWith('.kml')) {
+        reader.onload = function() {
+            var parser = new DOMParser();
+            var xmlDoc;
+            if(file.name.endsWith('.kmz')) {
+                JSZip.loadAsync(reader.result).then(function(zip) {
+                    zip.file(/.kml$/i)[0].async("string").then(function(kmlText){
+                        xmlDoc = parser.parseFromString(kmlText, "text/xml");
+                        var geojson = toGeoJSON.kml(xmlDoc);
+                        L.geoJSON(geojson, {style:{color:'red'}}).addTo(map);
+                        map.fitBounds(L.geoJSON(geojson).getBounds());
+                    });
+                });
+            } else { // .kml
+                xmlDoc = parser.parseFromString(reader.result, "text/xml");
+                var geojson = toGeoJSON.kml(xmlDoc);
+                L.geoJSON(geojson, {style:{color:'red'}}).addTo(map);
+                map.fitBounds(L.geoJSON(geojson).getBounds());
+            }
+        };
+        if(file.name.endsWith('.kmz')) reader.readAsArrayBuffer(file);
+        else reader.readAsText(file);
+    }
 });
-
-// Firebase configuration
-const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
-// Save new polygon example
-function savePolygon(geojson) {
-    db.collection("polygons").add(geojson)
-      .then(() => alert("Polygon saved!"))
-      .catch(err => console.error(err));
-}
