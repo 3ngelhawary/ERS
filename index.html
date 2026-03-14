@@ -4,12 +4,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Shared GIS Database</title>
+  <title>Shared GIS Database Pro</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
   <link rel="stylesheet" href="./style.css" />
-  <link rel="stylesheet" href="./responsive.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -18,63 +17,72 @@
         <div class="brand-block">
           <div class="brand-icon">GIS</div>
           <div>
-            <h1>Shared GIS Database</h1>
-            <p>Import, save, share, edit polygons</p>
+            <h1>GIS Pro Shared DB</h1>
+            <p>Layers, attributes, real-time, locks</p>
           </div>
         </div>
         <button class="collapse-btn" id="toggleSidebar" type="button">☰</button>
       </div>
 
-      <section class="panel glass">
-        <h2>Import Data</h2>
-
-        <label class="upload-box" for="fileInput">
-          <span class="upload-title">Upload GIS File</span>
-          <span class="upload-sub">KMZ, KML, ZIP Shapefile</span>
-        </label>
-        <input id="fileInput" type="file" accept=".kmz,.kml,.zip,.shp" />
-
-        <div class="meta-grid">
-          <input id="datasetTitle" type="text" placeholder="Dataset title" />
-          <input id="datasetOwner" type="text" placeholder="Owner / User" />
-          <input id="datasetCategory" type="text" placeholder="Category" />
-          <textarea id="datasetNotes" rows="3" placeholder="Notes / description"></textarea>
-        </div>
-
-        <div class="toolbar">
-          <button id="saveSelectedBtn" class="btn btn-primary" type="button">Save Selected</button>
-          <button id="refreshDbBtn" class="btn btn-secondary" type="button">Refresh DB</button>
+      <section class="panel">
+        <h2>User</h2>
+        <div class="grid">
+          <input id="userName" type="text" placeholder="User name" />
+          <input id="adminCode" type="password" placeholder="Admin code" />
+          <input id="datasetCategory" type="text" placeholder="Layer category" />
         </div>
       </section>
 
-      <section class="panel glass">
+      <section class="panel">
+        <h2>Import</h2>
+        <label class="upload-box" for="fileInput">
+          <span>Upload GIS File</span>
+          <small>KMZ, KML, ZIP Shapefile</small>
+        </label>
+        <input id="fileInput" type="file" accept=".kmz,.kml,.zip,.shp" />
+        <div class="grid">
+          <input id="datasetTitle" type="text" placeholder="Layer title" />
+          <textarea id="datasetNotes" rows="2" placeholder="Notes"></textarea>
+        </div>
+        <div class="toolbar">
+          <button id="saveSelectedBtn" class="btn primary" type="button">Save Selected</button>
+          <button id="refreshDbBtn" class="btn dark" type="button">Sync</button>
+        </div>
+      </section>
+
+      <section class="panel">
         <div class="panel-head">
-          <h2>Database</h2>
+          <h2>Layers</h2>
           <span id="dbCountBadge" class="badge">0</span>
         </div>
-
-        <input id="searchBox" class="search-box" type="text" placeholder="Search layers..." />
+        <input id="searchBox" class="search-box" type="text" placeholder="Search title, category, owner" />
         <div id="layerList" class="layer-list"></div>
       </section>
 
-      <section class="panel glass signature-panel">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Attributes</h2>
+          <button id="clearSelectionBtn" class="mini-btn" type="button">Clear</button>
+        </div>
+        <div id="attributePanel" class="attribute-panel"></div>
+      </section>
+
+      <section class="panel signature-panel">
         <div class="signature">Developed By A. ElHawary</div>
       </section>
     </aside>
 
     <main class="map-wrap">
-      <div class="topbar glass">
-        <div class="status-left">
+      <div class="topbar">
+        <div class="topbar-left">
           <span class="status-dot"></span>
           <span id="statusText">Ready</span>
         </div>
-
-        <div class="topbar-actions">
-          <button id="zoomAllBtn" class="btn btn-secondary" type="button">Zoom All</button>
-          <button id="clearUnsavedBtn" class="btn btn-danger" type="button">Clear Unsaved</button>
+        <div class="topbar-right">
+          <button id="zoomAllBtn" class="btn dark" type="button">Zoom All</button>
+          <button id="clearUnsavedBtn" class="btn danger" type="button">Clear Unsaved</button>
         </div>
       </div>
-
       <div id="map"></div>
     </main>
   </div>
@@ -84,7 +92,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://unpkg.com/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js"></script>
   <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
@@ -93,6 +100,8 @@
   <script src="./app.helpers.js"></script>
   <script src="./app.sidebar.js"></script>
   <script src="./app.storage.js"></script>
+  <script src="./app.sync.js"></script>
+  <script src="./app.panel.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
