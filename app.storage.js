@@ -1,11 +1,9 @@
 // File: app.storage.js
 window.AppStorage = (function () {
+  let unsubscribeLayers = null;
+
   async function saveItem(db, item) {
     const payload = AppHelpers.buildPayload(item);
-
-    if (payload.geojsonText.indexOf("[[") >= 0) {
-      payload.geojsonText = payload.geojsonText.replace(/\u2028/g, "").replace(/\u2029/g, "");
-    }
 
     if (item.docId) {
       await db.collection("gis_layers").doc(item.docId).set(payload, { merge: true });
@@ -17,38 +15,65 @@ window.AppStorage = (function () {
   }
 
   async function deleteItem(db, item) {
-    if (item.saved && item.docId) {
+    if (item && item.saved && item.docId) {
       await db.collection("gis_layers").doc(item.docId).delete();
     }
   }
 
-  async function loadAll(db) {
-    const result = [];
-    const snapshot = await db.collection("gis_layers").get();
+  function watchAll(db, onData, onError) {
+    if (unsubscribeLayers) {
+      unsubscribeLayers();
+      unsubscribeLayers = null;
+    }
 
-    snapshot.forEach(function (doc) {
-      const d = doc.data();
-      if (!d || !d.geojsonText) return;
+    unsubscribeLayers = db
+      .collection("gis_layers")
+      .orderBy("updatedAt", "desc")
+      .onSnapshot(
+        function (snapshot) {
+          const rows = [];
 
-      result.push({
-        docId: doc.id,
-        title: d.title || "Untitled",
-        owner: d.owner || "",
-        category: d.category || "",
-        notes: d.notes || "",
-        sourceType: d.sourceType || "database",
-        uploadedAt: d.uploadedAt || new Date().toISOString(),
-        color: d.color || GisParsers.getColorBySource(d.sourceType || "database"),
-        geojson: AppHelpers.textToGeoJson(d.geojsonText)
-      });
-    });
+          snapshot.forEach(function (doc) {
+            const d = doc.data();
+            if (!d || !d.geojsonText) return;
 
-    return result;
+            try {
+              rows.push({
+                docId: doc.id,
+                title: d.title || "Untitled",
+                owner: d.owner || "",
+                category: d.category || "",
+                notes: d.notes || "",
+                sourceType: d.sourceType || "database",
+                uploadedAt: d.uploadedAt || new Date().toISOString(),
+                color: d.color || GisParsers.getColorBySource(d.sourceType || "database"),
+                geojson: AppHelpers.textToGeoJson(d.geojsonText)
+              });
+            } catch (e) {
+            }
+          });
+
+          onData(rows);
+        },
+        function (error) {
+          if (onError) onError(error);
+        }
+      );
+
+    return unsubscribeLayers;
+  }
+
+  function stopWatch() {
+    if (unsubscribeLayers) {
+      unsubscribeLayers();
+      unsubscribeLayers = null;
+    }
   }
 
   return {
     saveItem: saveItem,
     deleteItem: deleteItem,
-    loadAll: loadAll
+    watchAll: watchAll,
+    stopWatch: stopWatch
   };
 })();
