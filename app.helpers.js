@@ -8,11 +8,14 @@ window.AppHelpers = (function () {
     const fallback = fileName ? fileName.replace(/\.[^/.]+$/, "") : "Untitled Layer";
     return {
       title: (els.datasetTitle && els.datasetTitle.value.trim()) || fallback,
-      owner: (els.datasetOwner && els.datasetOwner.value.trim()) || "",
-      category: (els.datasetCategory && els.datasetCategory.value.trim()) || "",
+      owner: (els.userName && els.userName.value.trim()) || "Guest",
+      category: (els.datasetCategory && els.datasetCategory.value.trim()) || "General",
       notes: (els.datasetNotes && els.datasetNotes.value.trim()) || "",
       sourceType: sourceType,
-      uploadedAt: new Date().toISOString()
+      uploadedAt: new Date().toISOString(),
+      visible: true,
+      lockOwner: "",
+      lockedAt: ""
     };
   }
 
@@ -27,18 +30,13 @@ window.AppHelpers = (function () {
       notes: meta.notes,
       sourceType: meta.sourceType,
       uploadedAt: meta.uploadedAt,
+      visible: meta.visible !== false,
+      lockOwner: meta.lockOwner || "",
+      lockedAt: meta.lockedAt || "",
       color: color || GisParsers.getColorBySource(meta.sourceType),
       geojson: geojson,
       leafletLayer: null
     };
-  }
-
-  function geoJsonToText(geojson) {
-    return JSON.stringify(geojson);
-  }
-
-  function textToGeoJson(text) {
-    return GisParsers.normalizeGeoJson(JSON.parse(text));
   }
 
   function buildPayload(item) {
@@ -51,9 +49,16 @@ window.AppHelpers = (function () {
       uploadedAt: item.uploadedAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       color: item.color || "",
+      visible: item.visible !== false,
+      lockOwner: item.lockOwner || "",
+      lockedAt: item.lockedAt || "",
       featureCount: GisParsers.countFeatures(item.geojson),
-      geojsonText: geoJsonToText(item.geojson)
+      geojsonText: JSON.stringify(item.geojson)
     };
+  }
+
+  function textToGeoJson(text) {
+    return GisParsers.normalizeGeoJson(JSON.parse(text));
   }
 
   function sourceTextFromFileName(fileName) {
@@ -65,13 +70,17 @@ window.AppHelpers = (function () {
     return "Unknown";
   }
 
+  function isAdmin(els) {
+    return (els.adminCode && els.adminCode.value.trim()) === "ADMIN123";
+  }
+
   return {
     uid: uid,
     collectMeta: collectMeta,
     makeItem: makeItem,
-    geoJsonToText: geoJsonToText,
-    textToGeoJson: textToGeoJson,
     buildPayload: buildPayload,
-    sourceTextFromFileName: sourceTextFromFileName
+    textToGeoJson: textToGeoJson,
+    sourceTextFromFileName: sourceTextFromFileName,
+    isAdmin: isAdmin
   };
 })();
