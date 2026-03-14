@@ -11,40 +11,42 @@ window.AppSidebar = (function () {
           return (v || "").toLowerCase().includes(keyword);
         });
       })
-      .sort(function (a, b) {
-        return new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0);
-      })
+      .sort(function (a, b) { return new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0); })
       .forEach(function (item) {
-        const card = document.createElement("div");
         const cnt = GisParsers.countFeatures(item.geojson);
-        const tag = item.saved ? "Saved" : "Unsaved";
-
+        const lockTxt = item.lockOwner ? "Locked: " + item.lockOwner : "Unlocked";
+        const card = document.createElement("div");
         card.className = "layer-card" + (state.activeId === item.id ? " active" : "");
         card.innerHTML =
           '<div class="layer-top"><div style="flex:1">' +
           '<div class="layer-title">' + GisUI.escapeHtml(item.title) + '</div>' +
-          '<div class="layer-meta">' + tag + " | " + GisUI.escapeHtml(item.sourceType) +
+          '<div class="layer-meta">' +
+          GisUI.escapeHtml(item.category) + " | " + GisUI.escapeHtml(item.owner) +
           "<br>Features: " + cnt +
-          "<br>Owner: " + GisUI.escapeHtml(item.owner || "-") +
-          "<br>Category: " + GisUI.escapeHtml(item.category || "-") +
+          "<br>" + lockTxt +
+          "<br>Visible: " + (item.visible !== false ? "Yes" : "No") +
           '</div></div><div class="color-chip" style="background:' + item.color + '"></div></div>' +
           '<div class="layer-actions">' +
           '<button class="small-btn view">View</button>' +
+          '<button class="small-btn toggle">' + (item.visible !== false ? "Hide" : "Show") + '</button>' +
           '<button class="small-btn edit">Edit</button>' +
+          (item.saved ? '<button class="small-btn lock">' + (item.lockOwner ? "Unlock" : "Lock") + '</button>' : "") +
           (item.saved ? "" : '<button class="small-btn save">Save</button>') +
-          '<button class="small-btn delete">' + (item.saved ? "Delete DB" : "Remove") + "</button></div>";
+          '<button class="small-btn delete">' + (item.saved ? "Delete" : "Remove") + "</button></div>";
 
         const btns = card.querySelectorAll("button");
-        btns[0].onclick = function () { actions.focusItem(item.id); };
-        btns[1].onclick = function () { actions.enableEdit(item.id); };
-        if (!item.saved) btns[2].onclick = function () { actions.saveItem(item.id); };
-        btns[item.saved ? 2 : 3].onclick = function () { actions.removeItem(item.id); };
+        let i = 0;
+        btns[i++].onclick = function () { actions.focusItem(item.id); };
+        btns[i++].onclick = function () { actions.toggleVisibility(item.id); };
+        btns[i++].onclick = function () { actions.enableEdit(item.id); };
+        if (item.saved) btns[i++].onclick = function () { actions.toggleLock(item.id); };
+        if (!item.saved) btns[i++].onclick = function () { actions.saveItem(item.id); };
+        btns[i++].onclick = function () { actions.removeItem(item.id); };
+
         els.layerList.appendChild(card);
       });
 
-    els.dbCountBadge.textContent = String(
-      state.items.filter(function (x) { return x.saved; }).length
-    );
+    els.dbCountBadge.textContent = String(state.items.filter(function (x) { return x.saved; }).length);
   }
 
   return { render: render };
