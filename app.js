@@ -17,9 +17,7 @@
 
   const imagery = L.tileLayer(
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    {
-      attribution: "Tiles &copy; Esri"
-    }
+    { attribution: "Tiles &copy; Esri" }
   );
 
   const baseMaps = {
@@ -80,9 +78,7 @@
   };
 
   function setStatus(text) {
-    if (els.statusText) {
-      els.statusText.textContent = text;
-    }
+    if (els.statusText) els.statusText.textContent = text;
   }
 
   function escapeHtml(value) {
@@ -100,39 +96,26 @@
 
   function countFeatures(geojson) {
     if (!geojson) return 0;
-    if (geojson.type === "FeatureCollection" && Array.isArray(geojson.features)) {
-      return geojson.features.length;
-    }
-    if (geojson.type === "Feature") {
-      return 1;
-    }
+    if (geojson.type === "FeatureCollection" && Array.isArray(geojson.features)) return geojson.features.length;
+    if (geojson.type === "Feature") return 1;
     return 0;
   }
 
   function buildPopupContent(feature, item) {
     const props = feature && feature.properties ? feature.properties : {};
     const rows = Object.keys(props).length
-      ? Object.keys(props)
-          .map(function (k) {
-            return "<div><b>" + escapeHtml(k) + "</b>: " + escapeHtml(props[k]) + "</div>";
-          })
-          .join("")
+      ? Object.keys(props).map(function (k) {
+          return "<div><b>" + escapeHtml(k) + "</b>: " + escapeHtml(props[k]) + "</div>";
+        }).join("")
       : "<div>No attributes</div>";
 
     return (
       '<div style="min-width:220px">' +
-      '<div style="font-size:14px;font-weight:700;margin-bottom:8px">' +
-      escapeHtml(item.title) +
-      "</div>" +
+      '<div style="font-size:14px;font-weight:700;margin-bottom:8px">' + escapeHtml(item.title) + "</div>" +
       '<div style="font-size:11px;color:#a9c3d8;margin-bottom:8px">' +
-      "Owner: " +
-      escapeHtml(item.owner || "-") +
-      "<br>" +
-      "Category: " +
-      escapeHtml(item.category || "-") +
-      "<br>" +
-      "Source: " +
-      escapeHtml(item.sourceType || "-") +
+      "Owner: " + escapeHtml(item.owner || "-") + "<br>" +
+      "Category: " + escapeHtml(item.category || "-") + "<br>" +
+      "Source: " + escapeHtml(item.sourceType || "-") +
       "</div>" +
       rows +
       "</div>"
@@ -157,28 +140,10 @@
   }
 
   function normalizeGeoJson(geojson) {
-    if (!geojson) {
-      throw new Error("Empty GIS data.");
-    }
-
-    if (geojson.type === "FeatureCollection") {
-      return geojson;
-    }
-
-    if (geojson.type === "Feature") {
-      return {
-        type: "FeatureCollection",
-        features: [geojson]
-      };
-    }
-
-    if (Array.isArray(geojson)) {
-      return {
-        type: "FeatureCollection",
-        features: geojson
-      };
-    }
-
+    if (!geojson) throw new Error("Empty GIS data.");
+    if (geojson.type === "FeatureCollection") return geojson;
+    if (geojson.type === "Feature") return { type: "FeatureCollection", features: [geojson] };
+    if (Array.isArray(geojson)) return { type: "FeatureCollection", features: geojson };
     throw new Error("Unsupported GeoJSON structure.");
   }
 
@@ -228,11 +193,7 @@
     const parser = new DOMParser();
     const xml = parser.parseFromString(kmlText, "text/xml");
     const parseErrors = xml.getElementsByTagName("parsererror");
-
-    if (parseErrors && parseErrors.length > 0) {
-      throw new Error("KML parse error.");
-    }
-
+    if (parseErrors && parseErrors.length > 0) throw new Error("KML parse error.");
     return normalizeGeoJson(togeojson.kml(xml));
   }
 
@@ -244,9 +205,7 @@
       return n.toLowerCase().endsWith(".kml");
     });
 
-    if (!kmlName) {
-      throw new Error("No KML file found inside KMZ.");
-    }
+    if (!kmlName) throw new Error("No KML file found inside KMZ.");
 
     const kmlText = await zip.file(kmlName).async("string");
     return await parseKmlText(kmlText);
@@ -263,8 +222,7 @@
       if (bounds && bounds.isValid()) {
         map.fitBounds(bounds, { padding: [40, 40] });
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   function renderSidebar() {
@@ -275,7 +233,6 @@
 
     const visibleItems = state.items.filter(function (item) {
       if (!keyword) return true;
-
       return (
         (item.title || "").toLowerCase().includes(keyword) ||
         (item.owner || "").toLowerCase().includes(keyword) ||
@@ -300,35 +257,21 @@
         card.innerHTML =
           '<div class="layer-top">' +
           '<div style="flex:1">' +
-          '<div class="layer-title">' +
-          escapeHtml(item.title) +
-          "</div>" +
+          '<div class="layer-title">' + escapeHtml(item.title) + "</div>" +
           '<div class="layer-meta">' +
-          escapeHtml(dbLabel) +
-          " | " +
-          escapeHtml(item.sourceType || "-") +
-          "<br>" +
-          "Features: " +
-          featureCount +
-          "<br>" +
-          "Owner: " +
-          escapeHtml(item.owner || "-") +
-          "<br>" +
-          "Category: " +
-          escapeHtml(item.category || "-") +
+          escapeHtml(dbLabel) + " | " + escapeHtml(item.sourceType || "-") + "<br>" +
+          "Features: " + featureCount + "<br>" +
+          "Owner: " + escapeHtml(item.owner || "-") + "<br>" +
+          "Category: " + escapeHtml(item.category || "-") +
           "</div>" +
           "</div>" +
-          '<div class="color-chip" style="background:' +
-          escapeHtml(item.color || "#1ea7ff") +
-          '"></div>' +
+          '<div class="color-chip" style="background:' + escapeHtml(item.color || "#1ea7ff") + '"></div>' +
           "</div>" +
           '<div class="layer-actions">' +
           '<button class="small-btn view">View</button>' +
           '<button class="small-btn edit">Edit</button>' +
           (item.saved ? "" : '<button class="small-btn save">Save</button>') +
-          '<button class="small-btn delete">' +
-          (item.saved ? "Delete DB" : "Remove") +
-          "</button>" +
+          '<button class="small-btn delete">' + (item.saved ? "Delete DB" : "Remove") + "</button>" +
           "</div>";
 
         const buttons = card.querySelectorAll("button");
@@ -571,7 +514,6 @@
 
       savedDocs.forEach(function (entry) {
         const data = entry.data;
-
         if (!data.geojson) return;
 
         const item = {
@@ -594,20 +536,7 @@
       });
 
       renderSidebar();
-
-      const group = L.featureGroup();
-      savedGroup.eachLayer(function (layer) {
-        group.addLayer(layer);
-      });
-
-      try {
-        const bounds = group.getBounds();
-        if (bounds && bounds.isValid()) {
-          map.fitBounds(bounds, { padding: [40, 40] });
-        }
-      } catch (e) {
-      }
-
+      zoomAll();
       setStatus("Database loaded");
     } catch (err) {
       console.error(err);
@@ -642,11 +571,7 @@
       if (lower.endsWith(".zip") || lower.endsWith(".shp")) {
         const buffer = await file.arrayBuffer();
         const geojson = await parseShpZip(buffer);
-        await importGeoJsonToApp(
-          fileName,
-          lower.endsWith(".zip") ? "ZIP Shapefile" : "SHP",
-          geojson
-        );
+        await importGeoJsonToApp(fileName, lower.endsWith(".zip") ? "ZIP Shapefile" : "SHP", geojson);
         return;
       }
 
@@ -675,8 +600,7 @@
       if (bounds && bounds.isValid()) {
         map.fitBounds(bounds, { padding: [40, 40] });
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   function clearUnsaved() {
@@ -711,7 +635,6 @@
     }
 
     const geojson = normalizeGeoJson(layer.toGeoJSON());
-
     await importGeoJsonToApp("Drawn Layer", "Draw", geojson);
 
     editableGroup.clearLayers();
@@ -812,12 +735,16 @@
 
   if (els.toggleSidebar) {
     els.toggleSidebar.addEventListener("click", function () {
-      els.sidebar.classList.toggle("collapsed");
+      if (els.sidebar) els.sidebar.classList.toggle("collapsed");
       setTimeout(function () {
         map.invalidateSize();
       }, 260);
     });
   }
+
+  setTimeout(function () {
+    map.invalidateSize();
+  }, 300);
 
   loadDatabaseLayers();
 })();
