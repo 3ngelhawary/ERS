@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
   <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./responsive.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -21,7 +22,6 @@
             <p>Import, save, share, edit polygons</p>
           </div>
         </div>
-
         <button class="collapse-btn" id="toggleSidebar" type="button">☰</button>
       </div>
 
@@ -88,6 +88,8 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
+  <script src="./gis.parsers.js"></script>
+  <script src="./gis.ui.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
