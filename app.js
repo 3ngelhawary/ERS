@@ -53,16 +53,17 @@
     toggleSidebar: document.getElementById("toggleSidebar")
   };
 
-  function setStatus(text) {
-    GisUI.setStatus(els, text);
-  }
+  function setStatus(text) { GisUI.setStatus(els, text); }
+  function clearEditState() { editableGroup.clearLayers(); }
 
-  function renderSidebar() {
-    AppSidebar.render(state, els, actions);
-  }
+  function renderSidebar() { AppSidebar.render(state, els, actions); }
 
-  function clearEditState() {
-    editableGroup.clearLayers();
+  function removeLeafletLayer(item) {
+    if (!item || !item.leafletLayer) return;
+    savedGroup.removeLayer(item.leafletLayer);
+    unsavedGroup.removeLayer(item.leafletLayer);
+    editableGroup.removeLayer(item.leafletLayer);
+    item.leafletLayer = null;
   }
 
   function addItem(meta, geojson, saved, docId, color) {
@@ -73,6 +74,24 @@
     renderSidebar();
     GisUI.fitToLayer(map, item.leafletLayer);
     return item;
+  }
+
+  function syncSavedRows(rows) {
+    state.items.filter(function (x) { return x.saved; }).forEach(removeLeafletLayer);
+    state.items = state.items.filter(function (x) { return !x.saved; });
+
+    rows.forEach(function (row) {
+      addItem({
+        title: row.title,
+        owner: row.owner,
+        category: row.category,
+        notes: row.notes,
+        sourceType: row.sourceType,
+        uploadedAt: row.uploadedAt
+      }, row.geojson, true, row.docId, row.color);
+    });
+
+    renderSidebar();
   }
 
   function focusItem(id) {
@@ -92,9 +111,7 @@
 
     item.leafletLayer.eachLayer(function (layer) {
       editableGroup.addLayer(layer);
-      if (layer.editing && typeof layer.editing.enable === "function") {
-        layer.editing.enable();
-      }
+      if (layer.editing && typeof layer.editing.enable === "function") layer.editing.enable();
     });
 
     GisUI.fitToLayer(map, item.leafletLayer);
@@ -122,18 +139,15 @@
         await updateGeoJsonFromEditable(item);
       }
 
-      if (item.leafletLayer) {
-        unsavedGroup.removeLayer(item.leafletLayer);
-        savedGroup.removeLayer(item.leafletLayer);
-      }
-
       item.docId = await AppStorage.saveItem(db, item);
       item.saved = true;
-
-      GisUI.createLeafletLayer(item, savedGroup, state, renderSidebar);
+      removeLeafletLayer(item);
+      state.items = state.items.filter(function (x) { return x.id !== item.id; });
+      state.activeId = null;
       clearEditState();
       renderSidebar();
-      setStatus("Saved to database: " + item.title);
+      setStatus("Saved successfully");
+      alert("Saved successfully");
     } catch (err) {
       alert("Save error: " + err.message);
       setStatus("Save failed");
@@ -146,50 +160,17 @@
 
     try {
       await AppStorage.deleteItem(db, item);
-
-      if (item.leafletLayer) {
-        savedGroup.removeLayer(item.leafletLayer);
-        unsavedGroup.removeLayer(item.leafletLayer);
-      }
-
+      removeLeafletLayer(item);
       state.items = state.items.filter(function (x) { return x.id !== id; });
       if (state.activeId === id) {
         state.activeId = null;
         clearEditState();
       }
-
       renderSidebar();
       setStatus("Removed: " + item.title);
     } catch (err) {
       alert("Delete error: " + err.message);
       setStatus("Delete failed");
-    }
-  }
-
-  async function loadDatabaseLayers() {
-    try {
-      setStatus("Loading database layers...");
-      savedGroup.clearLayers();
-      state.items = state.items.filter(function (x) { return !x.saved; });
-
-      const rows = await AppStorage.loadAll(db);
-      rows.forEach(function (row) {
-        addItem({
-          title: row.title,
-          owner: row.owner,
-          category: row.category,
-          notes: row.notes,
-          sourceType: row.sourceType,
-          uploadedAt: row.uploadedAt
-        }, row.geojson, true, row.docId, row.color);
-      });
-
-      renderSidebar();
-      GisUI.zoomAll(map, savedGroup, unsavedGroup);
-      setStatus("Database loaded");
-    } catch (err) {
-      alert("Database load error: " + err.message);
-      setStatus("Database load failed");
     }
   }
 
@@ -216,10 +197,7 @@
   }
 
   function clearUnsaved() {
-    state.items.filter(function (x) { return !x.saved; }).forEach(function (item) {
-      if (item.leafletLayer) unsavedGroup.removeLayer(item.leafletLayer);
-    });
-
+    state.items.filter(function (x) { return !x.saved; }).forEach(removeLeafletLayer);
     state.items = state.items.filter(function (x) { return x.saved; });
     state.activeId = null;
     clearEditState();
@@ -227,40 +205,38 @@
     setStatus("Unsaved layers cleared");
   }
 
-  const actions = {
-    focusItem: focusItem,
-    enableEdit: enableEdit,
-    saveItem: saveItem,
-    removeItem: removeItem
-  };
+  function startRealtimeSync() {
+    setStatus("Connecting database...");
+    AppStorage.watchAll(
+      db,
+      function (rows) {
+        syncSavedRows(rows);
+        GisUI.zoomAll(map, savedGroup, unsavedGroup);
+        setStatus("Database synced");
+      },
+      function (error) {
+        alert("Database sync error: " + error.message);
+        setStatus("Database sync failed");
+      }
+    );
+  }
+
+  const actions = { focusItem: focusItem, enableEdit: enableEdit, saveItem: saveItem, removeItem: removeItem };
 
   map.on(L.Draw.Event.CREATED, function (e) {
-    addItem(
-      AppHelpers.collectMeta(els, "Drawn Layer", "Draw"),
-      GisParsers.normalizeGeoJson(e.layer.toGeoJSON()),
-      false,
-      null
-    );
+    addItem(AppHelpers.collectMeta(els, "Drawn Layer", "Draw"), GisParsers.normalizeGeoJson(e.layer.toGeoJSON()), false, null);
     enableEdit(state.activeId);
   });
 
   map.on(L.Draw.Event.EDITED, async function () {
     const item = state.items.find(function (x) { return x.id === state.activeId; });
     if (!item) return;
-
     try {
       await updateGeoJsonFromEditable(item);
-      if (item.leafletLayer) {
-        savedGroup.removeLayer(item.leafletLayer);
-        unsavedGroup.removeLayer(item.leafletLayer);
-      }
-
+      removeLeafletLayer(item);
       GisUI.createLeafletLayer(item, item.saved ? savedGroup : unsavedGroup, state, renderSidebar);
-      if (item.saved) await saveItem(item.id);
-      else {
-        renderSidebar();
-        setStatus("Layer updated: " + item.title);
-      }
+      renderSidebar();
+      setStatus("Layer updated: " + item.title);
     } catch (err) {
       setStatus("Edit update failed");
     }
@@ -278,7 +254,7 @@
     await saveItem(item.id);
   });
 
-  els.refreshDbBtn.addEventListener("click", loadDatabaseLayers);
+  els.refreshDbBtn.addEventListener("click", startRealtimeSync);
   els.clearUnsavedBtn.addEventListener("click", clearUnsaved);
   els.zoomAllBtn.addEventListener("click", function () { GisUI.zoomAll(map, savedGroup, unsavedGroup); });
   els.searchBox.addEventListener("input", renderSidebar);
@@ -289,5 +265,5 @@
   });
 
   setTimeout(function () { map.invalidateSize(); }, 300);
-  loadDatabaseLayers();
+  startRealtimeSync();
 })();
