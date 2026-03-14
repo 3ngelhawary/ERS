@@ -3,14 +3,13 @@
   --bg-1: #06131f;
   --bg-2: #0d2135;
   --bg-3: #14314b;
-  --panel: rgba(10, 25, 40, 0.82);
-  --panel-border: rgba(120, 190, 255, 0.22);
+  --panel: rgba(10, 25, 40, 0.84);
+  --panel-border: rgba(120, 190, 255, 0.2);
   --text: #ecf6ff;
   --muted: #9fb7c9;
   --accent: #20c7ff;
   --accent-2: #0a84ff;
   --green: #18c37e;
-  --yellow: #ffbf3c;
   --red: #ff5b6e;
   --shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
   --radius: 18px;
@@ -23,29 +22,36 @@
 html,
 body {
   margin: 0;
+  width: 100%;
   height: 100%;
+  overflow: hidden;
   font-family: "Segoe UI", Tahoma, Arial, sans-serif;
   background:
     radial-gradient(circle at top left, #173b5f 0%, transparent 32%),
     radial-gradient(circle at bottom right, #0b6aa9 0%, transparent 28%),
     linear-gradient(135deg, var(--bg-1), var(--bg-2), var(--bg-3));
   color: var(--text);
-  overflow: hidden;
+}
+
+body {
+  min-height: 100vh;
 }
 
 .app-shell {
   display: flex;
-  width: 100%;
+  width: 100vw;
   height: 100vh;
 }
 
 .sidebar {
   width: 390px;
   min-width: 390px;
-  background: rgba(2, 14, 25, 0.9);
+  height: 100vh;
+  background: rgba(2, 14, 25, 0.92);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   padding: 16px;
   overflow-y: auto;
+  overflow-x: hidden;
   transition: width 0.25s ease, min-width 0.25s ease, padding 0.25s ease;
 }
 
@@ -83,19 +89,22 @@ body {
   font-weight: 800;
   letter-spacing: 1px;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: white;
+  color: #ffffff;
   box-shadow: var(--shadow);
+  flex-shrink: 0;
 }
 
 .brand-block h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: 28px;
+  line-height: 1.1;
+  color: #ffffff;
 }
 
 .brand-block p {
-  margin: 3px 0 0 0;
+  margin: 4px 0 0 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .collapse-btn {
@@ -107,6 +116,7 @@ body {
   border-radius: 12px;
   cursor: pointer;
   font-size: 18px;
+  flex-shrink: 0;
 }
 
 .glass {
@@ -124,7 +134,8 @@ body {
 
 .panel h2 {
   margin: 0 0 12px 0;
-  font-size: 16px;
+  font-size: 17px;
+  color: #ffffff;
 }
 
 .panel-head {
@@ -145,13 +156,14 @@ body {
 
 .upload-box {
   display: block;
-  border: 1.5px dashed rgba(255, 255, 255, 0.2);
+  border: 1.5px dashed rgba(255, 255, 255, 0.22);
   border-radius: 16px;
   padding: 18px;
   text-align: center;
   cursor: pointer;
   margin-bottom: 12px;
   background: rgba(255, 255, 255, 0.03);
+  transition: 0.2s ease;
 }
 
 .upload-box:hover {
@@ -163,6 +175,7 @@ body {
   display: block;
   font-size: 15px;
   font-weight: 700;
+  color: #ffffff;
 }
 
 .upload-sub {
@@ -172,8 +185,10 @@ body {
   font-size: 12px;
 }
 
-.upload-box input {
-  display: none;
+#fileInput {
+  width: 100%;
+  margin-bottom: 12px;
+  color: #ffffff;
 }
 
 .meta-grid {
@@ -242,7 +257,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: calc(100vh - 390px);
+  min-height: 100px;
+  max-height: calc(100vh - 430px);
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -271,6 +287,7 @@ body {
   font-weight: 700;
   margin: 0 0 4px 0;
   word-break: break-word;
+  color: #ffffff;
 }
 
 .layer-meta {
@@ -304,10 +321,21 @@ body {
   color: white;
 }
 
-.small-btn.view { background: #0a84ff; }
-.small-btn.edit { background: #ff9f1a; }
-.small-btn.save { background: #18c37e; }
-.small-btn.delete { background: #ff5b6e; }
+.small-btn.view {
+  background: #0a84ff;
+}
+
+.small-btn.edit {
+  background: #ff9f1a;
+}
+
+.small-btn.save {
+  background: #18c37e;
+}
+
+.small-btn.delete {
+  background: #ff5b6e;
+}
 
 .signature-panel {
   margin-bottom: 0;
@@ -323,6 +351,7 @@ body {
   position: relative;
   flex: 1;
   min-width: 0;
+  height: 100vh;
 }
 
 .topbar {
@@ -360,7 +389,15 @@ body {
 
 #map {
   width: 100%;
+  height: 100vh;
+  min-height: 100vh;
+  background: #dbe8f5;
+}
+
+.leaflet-container {
+  width: 100%;
   height: 100%;
+  background: #dbe8f5;
 }
 
 .leaflet-popup-content-wrapper,
@@ -383,19 +420,32 @@ body {
 }
 
 @media (max-width: 760px) {
+  html,
+  body {
+    overflow: auto;
+  }
+
   .app-shell {
     flex-direction: column;
+    height: auto;
+    min-height: 100vh;
   }
 
   .sidebar,
   .sidebar.collapsed {
     width: 100%;
     min-width: 100%;
-    height: 48vh;
+    height: auto;
   }
 
   .map-wrap {
-    height: 52vh;
+    height: 60vh;
+    min-height: 60vh;
+  }
+
+  #map {
+    height: 60vh;
+    min-height: 60vh;
   }
 
   .topbar {
