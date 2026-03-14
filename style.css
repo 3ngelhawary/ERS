@@ -1,0 +1,40 @@
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(to right, #f0f8ff, #e0ffff);
+}
+
+h1 {
+    text-align: center;
+    color: #2a9df4;
+    font-size: 2em;
+    margin: 10px 0;
+    text-shadow: 1px 1px 2px #aaa;
+}
+
+#map {
+    width: 90%;
+    height: 600px;
+    margin: 20px auto;
+    border: 3px solid #2a9df4;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+/* Custom file input button */
+#file-input {
+    display: block;
+    margin: 10px auto;
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: 2px solid #2a9df4;
+    background-color: #ffffffcc;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#file-input:hover {
+    background-color: #2a9df4cc;
+    color: white;
+}
