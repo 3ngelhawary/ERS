@@ -8,7 +8,7 @@
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -27,11 +27,12 @@
 
       <section class="panel glass">
         <h2>Import Data</h2>
+
         <label class="upload-box" for="fileInput">
           <span class="upload-title">Upload GIS File</span>
           <span class="upload-sub">KMZ, KML, ZIP Shapefile</span>
-          <input id="fileInput" type="file" accept=".kmz,.kml,.zip,.shp" />
         </label>
+        <input id="fileInput" type="file" accept=".kmz,.kml,.zip,.shp" />
 
         <div class="meta-grid">
           <input id="datasetTitle" type="text" placeholder="Dataset title" />
@@ -53,7 +54,6 @@
         </div>
 
         <input id="searchBox" class="search-box" type="text" placeholder="Search layers..." />
-
         <div id="layerList" class="layer-list"></div>
       </section>
 
@@ -88,6 +88,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-  <script src="app.js"></script>
+  <script src="./app.js"></script>
 </body>
 </html>
