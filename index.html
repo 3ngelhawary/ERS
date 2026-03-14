@@ -1,30 +1,93 @@
+<!-- File: index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Shared GIS App</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shared GIS Database</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-top">
+        <div class="brand-block">
+          <div class="brand-icon">GIS</div>
+          <div>
+            <h1>Shared GIS Database</h1>
+            <p>Import, save, share, edit polygons</p>
+          </div>
+        </div>
 
-<div id="container">
-  <div id="sidebar">
-    <h2>Imported Layers</h2>
-    <input type="file" id="file-input" accept=".shp,.zip,.kmz,.kml" />
-    <ul id="layer-list"></ul>
-    <button id="save-all">Save All to Database</button>
+        <button class="collapse-btn" id="toggleSidebar" type="button">☰</button>
+      </div>
+
+      <section class="panel glass">
+        <h2>Import Data</h2>
+        <label class="upload-box" for="fileInput">
+          <span class="upload-title">Upload GIS File</span>
+          <span class="upload-sub">KMZ, KML, ZIP Shapefile</span>
+          <input id="fileInput" type="file" accept=".kmz,.kml,.zip,.shp" />
+        </label>
+
+        <div class="meta-grid">
+          <input id="datasetTitle" type="text" placeholder="Dataset title" />
+          <input id="datasetOwner" type="text" placeholder="Owner / User" />
+          <input id="datasetCategory" type="text" placeholder="Category" />
+          <textarea id="datasetNotes" rows="3" placeholder="Notes / description"></textarea>
+        </div>
+
+        <div class="toolbar">
+          <button id="saveSelectedBtn" class="btn btn-primary" type="button">Save Selected</button>
+          <button id="refreshDbBtn" class="btn btn-secondary" type="button">Refresh DB</button>
+        </div>
+      </section>
+
+      <section class="panel glass">
+        <div class="panel-head">
+          <h2>Database</h2>
+          <span id="dbCountBadge" class="badge">0</span>
+        </div>
+
+        <input id="searchBox" class="search-box" type="text" placeholder="Search layers..." />
+
+        <div id="layerList" class="layer-list"></div>
+      </section>
+
+      <section class="panel glass signature-panel">
+        <div class="signature">Developed By A. ElHawary</div>
+      </section>
+    </aside>
+
+    <main class="map-wrap">
+      <div class="topbar glass">
+        <div class="status-left">
+          <span class="status-dot"></span>
+          <span id="statusText">Ready</span>
+        </div>
+
+        <div class="topbar-actions">
+          <button id="zoomAllBtn" class="btn btn-secondary" type="button">Zoom All</button>
+          <button id="clearUnsavedBtn" class="btn btn-danger" type="button">Clear Unsaved</button>
+        </div>
+      </div>
+
+      <div id="map"></div>
+    </main>
   </div>
 
-  <div id="map"></div>
-</div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/shpjs@latest/dist/shp.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://unpkg.com/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js"></script>
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://unpkg.com/shpjs/dist/shp.min.js"></script>
-<script src="https://unpkg.com/togeojson"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.0/jszip.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <script src="app.js"></script>
 </body>
 </html>
