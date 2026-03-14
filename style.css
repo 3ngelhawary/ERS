@@ -1,244 +1,67 @@
 /* File: style.css */
-:root {
-  --bg-1: #06131f;
-  --bg-2: #0d2135;
-  --bg-3: #14314b;
-  --panel: rgba(10, 25, 40, 0.84);
-  --panel-border: rgba(120, 190, 255, 0.2);
-  --text: #ecf6ff;
-  --muted: #9fb7c9;
-  --accent: #20c7ff;
-  --accent-2: #0a84ff;
-  --green: #18c37e;
-  --red: #ff5b6e;
-  --shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
-  --radius: 18px;
+:root{
+  --bg:#0b1622;--panel:#101e2d;--line:#22364a;--text:#eaf4ff;--muted:#8aa5bd;
+  --blue:#1f9bff;--green:#18c37e;--orange:#ff9f1a;--red:#ff5b6e;--radius:14px;
 }
-
-* {
-  box-sizing: border-box;
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:Segoe UI,Tahoma,Arial,sans-serif;background:#08121b;color:var(--text);overflow:hidden}
+.app-shell{display:flex;height:100vh;width:100vw}
+.sidebar{width:400px;min-width:400px;background:linear-gradient(180deg,#0c1724,#0f1d2d);border-right:1px solid var(--line);padding:14px;overflow:auto}
+.sidebar.collapsed{width:78px;min-width:78px}
+.sidebar.collapsed .panel,.sidebar.collapsed h1,.sidebar.collapsed p{display:none}
+.sidebar-top,.panel-head,.toolbar,.topbar,.topbar-left,.topbar-right,.brand-block{display:flex;align-items:center}
+.sidebar-top,.panel-head,.topbar{justify-content:space-between}
+.brand-block{gap:12px}
+.brand-icon{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,#22c7ff,#0a84ff);font-weight:800}
+.brand-block h1{margin:0;font-size:20px}
+.brand-block p{margin:4px 0 0 0;color:var(--muted);font-size:12px}
+.collapse-btn,.mini-btn,.btn{border:0;cursor:pointer}
+.collapse-btn{width:38px;height:38px;border-radius:10px;background:#16283a;color:#fff}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:12px}
+.panel h2{margin:0 0 10px 0;font-size:15px}
+.grid{display:grid;gap:8px}
+input,textarea,.search-box{
+  width:100%;padding:10px 11px;border-radius:10px;border:1px solid #274159;background:#0d1824;color:var(--text);outline:none
 }
-
-html,
-body {
-  margin: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  font-family: "Segoe UI", Tahoma, Arial, sans-serif;
-  background:
-    radial-gradient(circle at top left, #173b5f 0%, transparent 32%),
-    radial-gradient(circle at bottom right, #0b6aa9 0%, transparent 28%),
-    linear-gradient(135deg, var(--bg-1), var(--bg-2), var(--bg-3));
-  color: var(--text);
+.upload-box{
+  display:block;border:1.5px dashed #33506b;border-radius:12px;padding:14px;text-align:center;background:#0d1824;
+  cursor:pointer;margin-bottom:10px
 }
-
-body {
-  min-height: 100vh;
+.upload-box span{display:block;font-weight:700}
+.upload-box small{display:block;color:var(--muted);margin-top:5px}
+#fileInput{width:100%;margin-bottom:10px;color:#fff}
+.toolbar{gap:8px;margin-top:10px}
+.btn{padding:10px 12px;border-radius:10px;font-weight:700;color:#fff}
+.btn.primary{background:linear-gradient(135deg,#1fc7ff,#0a84ff);flex:1}
+.btn.dark{background:#1a2d40}
+.btn.danger{background:linear-gradient(135deg,#ff7c7c,#ff5b6e)}
+.mini-btn{padding:6px 8px;border-radius:8px;background:#1a2d40;color:#fff}
+.badge{background:#0f8d5f;color:#fff;border-radius:999px;padding:4px 9px;font-size:12px;font-weight:700}
+.layer-list{display:flex;flex-direction:column;gap:8px;max-height:310px;overflow:auto}
+.layer-card{background:#0d1824;border:1px solid #274159;border-radius:12px;padding:10px}
+.layer-card.active{border-color:#1f9bff}
+.layer-top{display:flex;justify-content:space-between;gap:8px}
+.layer-title{font-size:13px;font-weight:700}
+.layer-meta{font-size:11px;color:var(--muted);line-height:1.45}
+.color-chip{width:14px;height:14px;border-radius:50%;margin-top:3px}
+.layer-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.small-btn{border:0;border-radius:8px;padding:6px 8px;color:#fff;font-size:11px;cursor:pointer}
+.small-btn.view{background:#0a84ff}.small-btn.edit{background:#ff9f1a}.small-btn.save{background:#18c37e}
+.small-btn.delete{background:#ff5b6e}.small-btn.toggle{background:#546a7f}.small-btn.lock{background:#7c54ff}
+.attribute-panel{min-height:120px;max-height:220px;overflow:auto;background:#0d1824;border:1px solid #274159;border-radius:12px;padding:10px;font-size:12px}
+.attr-row{padding:5px 0;border-bottom:1px solid #1a2d40}
+.attr-key{color:#8fc7ff;font-weight:700}
+.signature{text-align:center;color:darkred;font-weight:800}
+.map-wrap{position:relative;flex:1}
+.topbar{
+  position:absolute;left:14px;right:14px;top:12px;z-index:1000;background:rgba(12,23,36,.94);
+  border:1px solid var(--line);border-radius:12px;padding:10px 12px
 }
-
-.app-shell {
-  display: flex;
-  width: 100vw;
-  height: 100vh;
-}
-
-.sidebar {
-  width: 390px;
-  min-width: 390px;
-  height: 100vh;
-  background: rgba(2, 14, 25, 0.92);
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 16px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  transition: width 0.25s ease, min-width 0.25s ease, padding 0.25s ease;
-}
-
-.sidebar.collapsed {
-  width: 78px;
-  min-width: 78px;
-  padding: 16px 10px;
-}
-
-.sidebar.collapsed .panel,
-.sidebar.collapsed .brand-block h1,
-.sidebar.collapsed .brand-block p {
-  display: none;
-}
-
-.sidebar-top,
-.panel-head,
-.layer-top,
-.topbar,
-.status-left,
-.topbar-actions,
-.toolbar,
-.brand-block {
-  display: flex;
-  align-items: center;
-}
-
-.sidebar-top,
-.panel-head,
-.layer-top,
-.topbar {
-  justify-content: space-between;
-}
-
-.sidebar-top {
-  margin-bottom: 18px;
-}
-
-.brand-block {
-  gap: 12px;
-}
-
-.brand-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 16px;
-  display: grid;
-  place-items: center;
-  font-weight: 800;
-  letter-spacing: 1px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #ffffff;
-  box-shadow: var(--shadow);
-  flex-shrink: 0;
-}
-
-.brand-block h1,
-.panel h2,
-.layer-title {
-  color: #ffffff;
-}
-
-.brand-block h1 {
-  margin: 0;
-  font-size: 28px;
-  line-height: 1.1;
-}
-
-.brand-block p,
-.layer-meta {
-  color: var(--muted);
-}
-
-.brand-block p {
-  margin: 4px 0 0 0;
-  font-size: 13px;
-}
-
-.collapse-btn,
-.btn,
-.small-btn {
-  cursor: pointer;
-  border: 0;
-}
-
-.collapse-btn {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text);
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  font-size: 18px;
-  flex-shrink: 0;
-}
-
-.glass {
-  background: var(--panel);
-  border: 1px solid var(--panel-border);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(10px);
-}
-
-.panel {
-  border-radius: var(--radius);
-  padding: 14px;
-  margin-bottom: 14px;
-}
-
-.panel h2 {
-  margin: 0 0 12px 0;
-  font-size: 17px;
-}
-
-.badge {
-  background: linear-gradient(135deg, var(--green), #0e8f60);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 5px 10px;
-  border-radius: 999px;
-}
-
-.upload-box,
-.meta-grid input,
-.meta-grid textarea,
-.search-box,
-.layer-card {
-  border: 1px solid rgba(255, 255, 255, 0.11);
-}
-
-.upload-box {
-  display: block;
-  border-style: dashed;
-  border-width: 1.5px;
-  border-radius: 16px;
-  padding: 18px;
-  text-align: center;
-  cursor: pointer;
-  margin-bottom: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  transition: 0.2s ease;
-}
-
-.upload-box:hover {
-  border-color: var(--accent);
-  background: rgba(32, 199, 255, 0.08);
-}
-
-.upload-title,
-.btn,
-.small-btn {
-  font-weight: 700;
-}
-
-.upload-title {
-  display: block;
-  font-size: 15px;
-  color: #ffffff;
-}
-
-.upload-sub {
-  display: block;
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-#fileInput {
-  width: 100%;
-  margin-bottom: 12px;
-  color: #ffffff;
-}
-
-.meta-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-}
-
-.meta-grid input,
-.meta-grid textarea,
-.search-box {
-  width: 100%;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text);
-  padding: 11px 12px;
-  border-radius: 12px;
-  outline: none;
-  font-size: 13px;
+.topbar-left,.topbar-right{gap:10px}
+.status-dot{width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green)}
+#map,.leaflet-container{width:100%;height:100vh;background:#d8e6f3}
+@media (max-width:900px){
+  .app-shell{flex-direction:column}
+  .sidebar,.sidebar.collapsed{width:100%;min-width:100%;height:48vh}
+  .map-wrap,#map,.leaflet-container{height:52vh}
 }
