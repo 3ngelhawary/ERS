@@ -4,37 +4,74 @@ body {
     background: linear-gradient(to right, #f0f8ff, #e0ffff);
 }
 
-h1 {
-    text-align: center;
+#container {
+    display: flex;
+    height: 100vh;
+}
+
+#sidebar {
+    width: 300px;
+    background: #fff;
+    padding: 15px;
+    border-right: 2px solid #2a9df4;
+    overflow-y: auto;
+}
+
+#sidebar h2 {
     color: #2a9df4;
-    font-size: 2em;
-    margin: 10px 0;
-    text-shadow: 1px 1px 2px #aaa;
+    text-align: center;
+    margin-top: 0;
 }
 
-#map {
-    width: 90%;
-    height: 600px;
-    margin: 20px auto;
-    border: 3px solid #2a9df4;
-    border-radius: 12px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-}
-
-/* Custom file input button */
 #file-input {
     display: block;
     margin: 10px auto;
-    padding: 10px 20px;
-    font-size: 16px;
-    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    border-radius: 6px;
     border: 2px solid #2a9df4;
-    background-color: #ffffffcc;
     cursor: pointer;
-    transition: all 0.3s ease;
+    width: 90%;
 }
 
 #file-input:hover {
     background-color: #2a9df4cc;
     color: white;
+}
+
+#layer-list {
+    list-style: none;
+    padding: 0;
+}
+
+#layer-list li {
+    padding: 8px;
+    margin: 5px 0;
+    background: #f0f8ff;
+    border: 1px solid #2a9df4;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#layer-list li span {
+    font-weight: bold;
+}
+
+#layer-list li button {
+    padding: 2px 6px;
+    margin-left: 5px;
+    font-size: 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+}
+
+#layer-list li button.edit { background-color: #ffcc00; }
+#layer-list li button.remove { background-color: #f44336; color: white; }
+
+#map {
+    flex: 1;
 }
