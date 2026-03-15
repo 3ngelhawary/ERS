@@ -17,15 +17,17 @@ window.AppSync = (function () {
 
     const unsavedItems = state.items.filter(function (x) { return !x.saved; });
 
-    state.items.filter(function (x) { return x.saved; }).forEach(function (item) {
-      removeLayer(savedGroup, unsavedGroup, item);
-    });
+    state.items
+      .filter(function (x) { return x.saved; })
+      .forEach(function (item) {
+        removeLayer(savedGroup, unsavedGroup, item);
+      });
 
     const rebuilt = rows.map(function (row) {
       const item = AppHelpers.makeItem(
         {
           title: row.title,
-          owner: row.owner,
+          owner_name: row.owner_name,
           category: row.category,
           notes: row.notes,
           sourceType: row.sourceType,
@@ -36,9 +38,10 @@ window.AppSync = (function () {
         },
         row.geojson,
         true,
-        row.docId,
+        row.layerId,
         row.color
       );
+
       if (item.visible !== false) createLayer(item, savedGroup);
       return item;
     });
