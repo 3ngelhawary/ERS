@@ -49,13 +49,12 @@
         <h2>Import</h2>
 
         <label class="upload-box drag-drop-box" id="dropZone" for="fileInput">
-          <span>Drag & Drop GIS File Here</span>
-          <small>KMZ, KML, ZIP Shapefile</small>
-          <small>For SHP, drop all files together: .shp + .dbf + .shx + .prj</small>
+          <span>Drag &amp; Drop File Here</span>
           <small id="dropZoneFileName">No file selected</small>
         </label>
 
-        <input id="fileInput" type="file" accept=".kmz,.kml,.zip,.shp,.dbf,.shx,.prj,.cpg" multiple />
+        <input id="fileInput" type="file" accept=".kmz,.kml,.zip,.shp" />
+        <input id="folderInput" type="file" webkitdirectory directory multiple />
 
         <div class="grid">
           <input id="datasetTitle" type="text" placeholder="Layer title" />
