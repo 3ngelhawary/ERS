@@ -11,6 +11,8 @@
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
+  <button id="sidebarReopenBtn" class="sidebar-reopen-btn" type="button">☰</button>
+
   <div class="app-shell">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-top">
@@ -27,9 +29,19 @@
       <section class="panel">
         <h2>User</h2>
         <div class="grid">
-          <input id="userName" type="text" placeholder="User name" />
+          <input id="userName" type="text" placeholder="User name (required for save)" />
           <input id="adminCode" type="password" placeholder="Admin code" />
           <input id="datasetCategory" type="text" placeholder="Layer category" />
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Map</h2>
+        <div class="grid">
+          <select id="basemapSelect">
+            <option value="street">Street</option>
+            <option value="satellite">Satellite</option>
+          </select>
         </div>
       </section>
 
@@ -38,11 +50,12 @@
 
         <label class="upload-box drag-drop-box" id="dropZone" for="fileInput">
           <span>Drag & Drop GIS File Here</span>
-          <small>KMZ, KML, ZIP Shapefile, SHP</small>
+          <small>KMZ, KML, ZIP Shapefile</small>
+          <small>For SHP, drop all files together: .shp + .dbf + .shx + .prj</small>
           <small id="dropZoneFileName">No file selected</small>
         </label>
 
-        <input id="fileInput" type="file" accept=".kmz,.kml,.zip,.shp" />
+        <input id="fileInput" type="file" accept=".kmz,.kml,.zip,.shp,.dbf,.shx,.prj,.cpg" multiple />
 
         <div class="grid">
           <input id="datasetTitle" type="text" placeholder="Layer title" />
