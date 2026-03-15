@@ -455,7 +455,7 @@
       .single();
 
     if (inserted.error) throw inserted.error;
-    return inserted.data.id;
+      return inserted.data.id;
   }
 
   async function replaceFeatures(layerId, geojson) {
@@ -517,7 +517,7 @@
     const item = state.items.find(function (x) { return x.id === id; });
     if (!item) return;
 
-    if (!isAdmin()) {
+    if (item.saved && !isAdmin()) {
       alert("Delete allowed for admin only.");
       return;
     }
@@ -682,6 +682,7 @@
   async function startRealtimeSync() {
     try {
       setStatus("Connecting database...");
+
       if (state.channel) {
         supabaseClient.removeChannel(state.channel);
         state.channel = null;
