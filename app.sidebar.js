@@ -7,23 +7,26 @@ window.AppSidebar = (function () {
     state.items
       .filter(function (item) {
         if (!keyword) return true;
-        return [item.title, item.owner, item.category, item.sourceType].some(function (v) {
+        return [item.title, item.owner_name, item.category, item.sourceType].some(function (v) {
           return (v || "").toLowerCase().includes(keyword);
         });
       })
-      .sort(function (a, b) { return new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0); })
+      .sort(function (a, b) {
+        return new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0);
+      })
       .forEach(function (item) {
         const cnt = GisParsers.countFeatures(item.geojson);
         const lockTxt = item.lockOwner ? "Locked: " + item.lockOwner : "Unlocked";
         const card = document.createElement("div");
+
         card.className = "layer-card" + (state.activeId === item.id ? " active" : "");
         card.innerHTML =
           '<div class="layer-top"><div style="flex:1">' +
           '<div class="layer-title">' + GisUI.escapeHtml(item.title) + '</div>' +
           '<div class="layer-meta">' +
-          GisUI.escapeHtml(item.category) + " | " + GisUI.escapeHtml(item.owner) +
+          GisUI.escapeHtml(item.category) + " | " + GisUI.escapeHtml(item.owner_name) +
           "<br>Features: " + cnt +
-          "<br>" + lockTxt +
+          "<br>" + GisUI.escapeHtml(lockTxt) +
           "<br>Visible: " + (item.visible !== false ? "Yes" : "No") +
           '</div></div><div class="color-chip" style="background:' + item.color + '"></div></div>' +
           '<div class="layer-actions">' +
@@ -46,7 +49,9 @@ window.AppSidebar = (function () {
         els.layerList.appendChild(card);
       });
 
-    els.dbCountBadge.textContent = String(state.items.filter(function (x) { return x.saved; }).length);
+    els.dbCountBadge.textContent = String(
+      state.items.filter(function (x) { return x.saved; }).length
+    );
   }
 
   return { render: render };
