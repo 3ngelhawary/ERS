@@ -1,58 +1,85 @@
-// File: app.sidebar.js
-window.AppSidebar = (function () {
-  function render(state, els, actions) {
-    const keyword = (els.searchBox && els.searchBox.value.trim().toLowerCase()) || "";
-    els.layerList.innerHTML = "";
-
-    state.items
-      .filter(function (item) {
-        if (!keyword) return true;
-        return [item.title, item.owner_name, item.category, item.sourceType].some(function (v) {
-          return (v || "").toLowerCase().includes(keyword);
-        });
-      })
-      .sort(function (a, b) {
-        return new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0);
-      })
-      .forEach(function (item) {
-        const cnt = GisParsers.countFeatures(item.geojson);
-        const lockTxt = item.lockOwner ? "Locked: " + item.lockOwner : "Unlocked";
-        const card = document.createElement("div");
-
-        card.className = "layer-card" + (state.activeId === item.id ? " active" : "");
-        card.innerHTML =
-          '<div class="layer-top"><div style="flex:1">' +
-          '<div class="layer-title">' + GisUI.escapeHtml(item.title) + '</div>' +
-          '<div class="layer-meta">' +
-          GisUI.escapeHtml(item.category) + " | " + GisUI.escapeHtml(item.owner_name) +
-          "<br>Features: " + cnt +
-          "<br>" + GisUI.escapeHtml(lockTxt) +
-          "<br>Visible: " + (item.visible !== false ? "Yes" : "No") +
-          '</div></div><div class="color-chip" style="background:' + item.color + '"></div></div>' +
-          '<div class="layer-actions">' +
-          '<button class="small-btn view">View</button>' +
-          '<button class="small-btn toggle">' + (item.visible !== false ? "Hide" : "Show") + '</button>' +
-          '<button class="small-btn edit">Edit</button>' +
-          (item.saved ? '<button class="small-btn lock">' + (item.lockOwner ? "Unlock" : "Lock") + '</button>' : "") +
-          (item.saved ? "" : '<button class="small-btn save">Save</button>') +
-          '<button class="small-btn delete">' + (item.saved ? "Delete" : "Remove") + "</button></div>";
-
-        const btns = card.querySelectorAll("button");
-        let i = 0;
-        btns[i++].onclick = function () { actions.focusItem(item.id); };
-        btns[i++].onclick = function () { actions.toggleVisibility(item.id); };
-        btns[i++].onclick = function () { actions.enableEdit(item.id); };
-        if (item.saved) btns[i++].onclick = function () { actions.toggleLock(item.id); };
-        if (!item.saved) btns[i++].onclick = function () { actions.saveItem(item.id); };
-        btns[i++].onclick = function () { actions.removeItem(item.id); };
-
-        els.layerList.appendChild(card);
-      });
-
-    els.dbCountBadge.textContent = String(
-      state.items.filter(function (x) { return x.saved; }).length
-    );
-  }
-
-  return { render: render };
-})();
+/* File: style.css */
+:root{
+  --bg:#0b1622;--panel:#101e2d;--line:#22364a;--text:#eaf4ff;--muted:#8aa5bd;
+  --blue:#1f9bff;--green:#18c37e;--orange:#ff9f1a;--red:#ff5b6e;--radius:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:Segoe UI,Tahoma,Arial,sans-serif;background:#08121b;color:var(--text);overflow:hidden}
+.app-shell{display:flex;height:100vh;width:100vw}
+.sidebar{width:400px;min-width:400px;background:linear-gradient(180deg,#0c1724,#0f1d2d);border-right:1px solid var(--line);padding:14px;overflow:auto}
+.sidebar.collapsed{width:78px;min-width:78px}
+.sidebar.collapsed .panel,.sidebar.collapsed h1,.sidebar.collapsed p{display:none}
+.sidebar-top,.panel-head,.toolbar,.topbar,.topbar-left,.topbar-right,.brand-block{display:flex;align-items:center}
+.sidebar-top,.panel-head,.topbar{justify-content:space-between}
+.brand-block{gap:12px}
+.brand-icon{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,#22c7ff,#0a84ff);font-weight:800}
+.brand-block h1{margin:0;font-size:20px}
+.brand-block p{margin:4px 0 0 0;color:var(--muted);font-size:12px}
+.collapse-btn,.mini-btn,.btn{border:0;cursor:pointer}
+.collapse-btn{width:38px;height:38px;border-radius:10px;background:#16283a;color:#fff}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:12px}
+.panel h2{margin:0 0 10px 0;font-size:15px}
+.grid{display:grid;gap:8px}
+input,textarea,.search-box{
+  width:100%;padding:10px 11px;border-radius:10px;border:1px solid #274159;background:#0d1824;color:var(--text);outline:none
+}
+.upload-box{
+  display:block;border:1.5px dashed #33506b;border-radius:12px;padding:14px;text-align:center;background:#0d1824;
+  cursor:pointer;margin-bottom:10px;transition:.2s ease
+}
+.upload-box span{display:block;font-weight:700}
+.upload-box small{display:block;color:var(--muted);margin-top:5px}
+.drag-drop-box{
+  min-height:120px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+}
+.drag-drop-box.drag-over{
+  border-color:var(--blue);
+  background:#13263a;
+  box-shadow:0 0 0 2px rgba(31,155,255,.18) inset;
+}
+#dropZoneFileName{
+  color:#8fc7ff;
+  font-weight:700;
+}
+#fileInput{
+  display:none;
+}
+.toolbar{gap:8px;margin-top:10px}
+.btn{padding:10px 12px;border-radius:10px;font-weight:700;color:#fff}
+.btn.primary{background:linear-gradient(135deg,#1fc7ff,#0a84ff);flex:1}
+.btn.dark{background:#1a2d40}
+.btn.danger{background:linear-gradient(135deg,#ff7c7c,#ff5b6e)}
+.mini-btn{padding:6px 8px;border-radius:8px;background:#1a2d40;color:#fff}
+.badge{background:#0f8d5f;color:#fff;border-radius:999px;padding:4px 9px;font-size:12px;font-weight:700}
+.layer-list{display:flex;flex-direction:column;gap:8px;max-height:310px;overflow:auto}
+.layer-card{background:#0d1824;border:1px solid #274159;border-radius:12px;padding:10px}
+.layer-card.active{border-color:#1f9bff}
+.layer-top{display:flex;justify-content:space-between;gap:8px}
+.layer-title{font-size:13px;font-weight:700}
+.layer-meta{font-size:11px;color:var(--muted);line-height:1.45}
+.color-chip{width:14px;height:14px;border-radius:50%;margin-top:3px}
+.layer-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.small-btn{border:0;border-radius:8px;padding:6px 8px;color:#fff;font-size:11px;cursor:pointer}
+.small-btn.view{background:#0a84ff}.small-btn.edit{background:#ff9f1a}.small-btn.save{background:#18c37e}
+.small-btn.delete{background:#ff5b6e}.small-btn.toggle{background:#546a7f}.small-btn.lock{background:#7c54ff}
+.attribute-panel{min-height:120px;max-height:220px;overflow:auto;background:#0d1824;border:1px solid #274159;border-radius:12px;padding:10px;font-size:12px}
+.attr-row{padding:5px 0;border-bottom:1px solid #1a2d40}
+.attr-key{color:#8fc7ff;font-weight:700}
+.signature{text-align:center;color:darkred;font-weight:800}
+.map-wrap{position:relative;flex:1}
+.topbar{
+  position:absolute;left:14px;right:14px;top:12px;z-index:1000;background:rgba(12,23,36,.94);
+  border:1px solid var(--line);border-radius:12px;padding:10px 12px
+}
+.topbar-left,.topbar-right{gap:10px}
+.status-dot{width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green)}
+#map,.leaflet-container{width:100%;height:100vh;background:#d8e6f3}
+@media (max-width:900px){
+  .app-shell{flex-direction:column}
+  .sidebar,.sidebar.collapsed{width:100%;min-width:100%;height:48vh}
+  .map-wrap,#map,.leaflet-container{height:52vh}
+}
