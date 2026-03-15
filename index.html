@@ -48,14 +48,13 @@
       <section class="panel">
         <h2>Import</h2>
 
-        <label class="upload-box drag-drop-box" id="dropZone" for="fileInput">
-          <span>Drag &amp; Drop File Here</span>
-          <small id="dropZoneFileName">No file selected</small>
-        </label>
+        <div class="upload-box drag-drop-box" id="dropZone">
+          <span id="dropZoneTitle">Drag &amp; Drop File Here</span>
+          <small id="dropZoneFileName">Supported: KMZ, KML, ZIP Shapefile, or SHP + DBF + SHX</small>
+        </div>
+      </section>
 
-        <input id="fileInput" type="file" accept=".kmz,.kml,.zip,.shp" />
-        <input id="folderInput" type="file" webkitdirectory directory multiple />
-
+      <section class="panel">
         <div class="grid">
           <input id="datasetTitle" type="text" placeholder="Layer title" />
           <textarea id="datasetNotes" rows="2" placeholder="Notes"></textarea>
