@@ -35,15 +35,19 @@
 
       <section class="panel">
         <h2>Import</h2>
+
         <label class="upload-box" for="fileInput">
           <span>Upload GIS File</span>
-          <small>KMZ, KML, ZIP Shapefile</small>
+          <small>KMZ, KML, ZIP Shapefile, SHP</small>
         </label>
+
         <input id="fileInput" type="file" accept=".kmz,.kml,.zip,.shp" />
+
         <div class="grid">
           <input id="datasetTitle" type="text" placeholder="Layer title" />
           <textarea id="datasetNotes" rows="2" placeholder="Notes"></textarea>
         </div>
+
         <div class="toolbar">
           <button id="saveSelectedBtn" class="btn primary" type="button">Save Selected</button>
           <button id="refreshDbBtn" class="btn dark" type="button">Sync</button>
@@ -55,7 +59,14 @@
           <h2>Layers</h2>
           <span id="dbCountBadge" class="badge">0</span>
         </div>
-        <input id="searchBox" class="search-box" type="text" placeholder="Search title, category, owner" />
+
+        <input
+          id="searchBox"
+          class="search-box"
+          type="text"
+          placeholder="Search title, category, owner"
+        />
+
         <div id="layerList" class="layer-list"></div>
       </section>
 
@@ -64,6 +75,7 @@
           <h2>Attributes</h2>
           <button id="clearSelectionBtn" class="mini-btn" type="button">Clear</button>
         </div>
+
         <div id="attributePanel" class="attribute-panel"></div>
       </section>
 
@@ -78,23 +90,25 @@
           <span class="status-dot"></span>
           <span id="statusText">Ready</span>
         </div>
+
         <div class="topbar-right">
           <button id="zoomAllBtn" class="btn dark" type="button">Zoom All</button>
           <button id="clearUnsavedBtn" class="btn danger" type="button">Clear Unsaved</button>
         </div>
       </div>
+
       <div id="map"></div>
     </main>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
   <script src="https://unpkg.com/shpjs@latest/dist/shp.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://unpkg.com/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js"></script>
-  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+  <script src="./app.config.js"></script>
   <script src="./gis.parsers.js"></script>
   <script src="./gis.ui.js"></script>
   <script src="./app.helpers.js"></script>
