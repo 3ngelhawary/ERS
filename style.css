@@ -25,11 +25,29 @@ input,textarea,.search-box{
 }
 .upload-box{
   display:block;border:1.5px dashed #33506b;border-radius:12px;padding:14px;text-align:center;background:#0d1824;
-  cursor:pointer;margin-bottom:10px
+  cursor:pointer;margin-bottom:10px;transition:.2s ease
 }
 .upload-box span{display:block;font-weight:700}
 .upload-box small{display:block;color:var(--muted);margin-top:5px}
-#fileInput{width:100%;margin-bottom:10px;color:#fff}
+.drag-drop-box{
+  min-height:120px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+}
+.drag-drop-box.drag-over{
+  border-color:var(--blue);
+  background:#13263a;
+  box-shadow:0 0 0 2px rgba(31,155,255,.18) inset;
+}
+#dropZoneFileName{
+  color:#8fc7ff;
+  font-weight:700;
+}
+#fileInput{
+  display:none;
+}
 .toolbar{gap:8px;margin-top:10px}
 .btn{padding:10px 12px;border-radius:10px;font-weight:700;color:#fff}
 .btn.primary{background:linear-gradient(135deg,#1fc7ff,#0a84ff);flex:1}
