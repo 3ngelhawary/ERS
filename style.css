@@ -1,129 +1,77 @@
-<!-- File: index.html -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Shared GIS Database Pro</title>
-
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
-  <link rel="stylesheet" href="./style.css" />
-</head>
-<body>
-  <button id="sidebarReopenBtn" class="sidebar-reopen-btn" type="button">☰</button>
-
-  <div class="app-shell">
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-top">
-        <div class="brand-block">
-          <div class="brand-icon">GIS</div>
-          <div>
-            <h1>GIS Pro Shared DB</h1>
-            <p>Layers, attributes, real-time, locks</p>
-          </div>
-        </div>
-        <button class="collapse-btn" id="toggleSidebar" type="button">☰</button>
-      </div>
-
-      <section class="panel">
-        <h2>User</h2>
-        <div class="grid">
-          <input id="userName" type="text" placeholder="User name (required for save)" />
-          <input id="adminCode" type="password" placeholder="Admin code" />
-          <input id="datasetCategory" type="text" placeholder="Layer category" />
-        </div>
-      </section>
-
-      <section class="panel">
-        <h2>Map</h2>
-        <div class="grid">
-          <select id="basemapSelect">
-            <option value="street">Street</option>
-            <option value="satellite">Satellite</option>
-          </select>
-        </div>
-      </section>
-
-      <section class="panel">
-        <h2>Import</h2>
-
-        <label class="upload-box drag-drop-box" id="dropZone" for="fileInput">
-          <span>Drag & Drop GIS File Here</span>
-          <small>KMZ, KML, ZIP Shapefile</small>
-          <small>For SHP, drop all files together: .shp + .dbf + .shx + .prj</small>
-          <small id="dropZoneFileName">No file selected</small>
-        </label>
-
-        <input id="fileInput" type="file" accept=".kmz,.kml,.zip,.shp,.dbf,.shx,.prj,.cpg" multiple />
-
-        <div class="grid">
-          <input id="datasetTitle" type="text" placeholder="Layer title" />
-          <textarea id="datasetNotes" rows="2" placeholder="Notes"></textarea>
-        </div>
-
-        <div class="toolbar">
-          <button id="saveSelectedBtn" class="btn primary" type="button">Save Selected</button>
-          <button id="refreshDbBtn" class="btn dark" type="button">Sync</button>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head">
-          <h2>Layers</h2>
-          <span id="dbCountBadge" class="badge">0</span>
-        </div>
-
-        <input id="searchBox" class="search-box" type="text" placeholder="Search title, category, owner" />
-        <div id="layerList" class="layer-list"></div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head">
-          <h2>Attributes</h2>
-          <button id="clearSelectionBtn" class="mini-btn" type="button">Clear</button>
-        </div>
-
-        <div id="attributePanel" class="attribute-panel"></div>
-      </section>
-
-      <section class="panel signature-panel">
-        <div class="signature">Developed By A. ElHawary</div>
-      </section>
-    </aside>
-
-    <main class="map-wrap">
-      <div class="topbar">
-        <div class="topbar-left">
-          <span class="status-dot"></span>
-          <span id="statusText">Ready</span>
-        </div>
-
-        <div class="topbar-right">
-          <button id="zoomAllBtn" class="btn dark" type="button">Zoom All</button>
-          <button id="clearUnsavedBtn" class="btn danger" type="button">Clear Unsaved</button>
-        </div>
-      </div>
-
-      <div id="map"></div>
-    </main>
-  </div>
-
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-  <script src="https://unpkg.com/shpjs@latest/dist/shp.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://unpkg.com/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <script src="./app.config.js"></script>
-  <script src="./gis.parsers.js"></script>
-  <script src="./gis.ui.js"></script>
-  <script src="./app.helpers.js"></script>
-  <script src="./app.sidebar.js"></script>
-  <script src="./app.storage.js"></script>
-  <script src="./app.sync.js"></script>
-  <script src="./app.panel.js"></script>
-  <script src="./app.js"></script>
-</body>
-</html>
+/* File: style.css */
+:root{
+  --bg:#0b1622;--panel:#101e2d;--line:#22364a;--text:#eaf4ff;--muted:#8aa5bd;
+  --blue:#1f9bff;--green:#18c37e;--orange:#ff9f1a;--red:#ff5b6e;--radius:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:Segoe UI,Tahoma,Arial,sans-serif;background:#08121b;color:var(--text);overflow:hidden}
+.app-shell{display:flex;height:100vh;width:100vw}
+.sidebar{width:400px;min-width:400px;background:linear-gradient(180deg,#0c1724,#0f1d2d);border-right:1px solid var(--line);padding:14px;overflow:auto;transition:.25s ease}
+.sidebar.collapsed{width:0;min-width:0;padding:0;border-right:0;overflow:hidden}
+.sidebar-top,.panel-head,.toolbar,.topbar,.topbar-left,.topbar-right,.brand-block{display:flex;align-items:center}
+.sidebar-top,.panel-head,.topbar{justify-content:space-between}
+.brand-block{gap:12px}
+.brand-icon{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,#22c7ff,#0a84ff);font-weight:800}
+.brand-block h1{margin:0;font-size:20px}
+.brand-block p{margin:4px 0 0 0;color:var(--muted);font-size:12px}
+.collapse-btn,.mini-btn,.btn,.sidebar-reopen-btn{border:0;cursor:pointer}
+.collapse-btn{width:38px;height:38px;border-radius:10px;background:#16283a;color:#fff}
+.sidebar-reopen-btn{
+  position:fixed;left:12px;top:12px;z-index:2000;width:42px;height:42px;border-radius:12px;
+  background:#16283a;color:#fff;display:none;box-shadow:0 8px 24px rgba(0,0,0,.35)
+}
+.sidebar.collapsed + .map-wrap .sidebar-reopen-btn{display:block}
+body.sidebar-is-collapsed .sidebar-reopen-btn{display:block}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:12px}
+.panel h2{margin:0 0 10px 0;font-size:15px}
+.grid{display:grid;gap:8px}
+input,textarea,select,.search-box{
+  width:100%;padding:10px 11px;border-radius:10px;border:1px solid #274159;background:#0d1824;color:var(--text);outline:none
+}
+.upload-box{
+  display:block;border:1.5px dashed #33506b;border-radius:12px;padding:14px;text-align:center;background:#0d1824;
+  cursor:pointer;margin-bottom:10px;transition:.2s ease
+}
+.upload-box span{display:block;font-weight:700}
+.upload-box small{display:block;color:var(--muted);margin-top:5px}
+.drag-drop-box{min-height:140px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.drag-drop-box.drag-over{border-color:var(--blue);background:#13263a;box-shadow:0 0 0 2px rgba(31,155,255,.18) inset}
+#dropZoneFileName{color:#8fc7ff;font-weight:700}
+#fileInput{display:none}
+.toolbar{gap:8px;margin-top:10px}
+.btn{padding:10px 12px;border-radius:10px;font-weight:700;color:#fff}
+.btn.primary{background:linear-gradient(135deg,#1fc7ff,#0a84ff);flex:1}
+.btn.dark{background:#1a2d40}
+.btn.danger{background:linear-gradient(135deg,#ff7c7c,#ff5b6e)}
+.mini-btn{padding:6px 8px;border-radius:8px;background:#1a2d40;color:#fff}
+.badge{background:#0f8d5f;color:#fff;border-radius:999px;padding:4px 9px;font-size:12px;font-weight:700}
+.layer-list{display:flex;flex-direction:column;gap:8px;max-height:310px;overflow:auto}
+.layer-card{background:#0d1824;border:1px solid #274159;border-radius:12px;padding:10px}
+.layer-card.active{border-color:#1f9bff}
+.layer-top{display:flex;justify-content:space-between;gap:8px}
+.layer-title{font-size:13px;font-weight:700}
+.layer-meta{font-size:11px;color:var(--muted);line-height:1.45}
+.color-chip{width:14px;height:14px;border-radius:50%;margin-top:3px}
+.layer-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.small-btn{border:0;border-radius:8px;padding:6px 8px;color:#fff;font-size:11px;cursor:pointer}
+.small-btn.view{background:#0a84ff}.small-btn.edit{background:#ff9f1a}.small-btn.save{background:#18c37e}
+.small-btn.delete{background:#ff5b6e}.small-btn.toggle{background:#546a7f}.small-btn.lock{background:#7c54ff}
+.attribute-panel{min-height:120px;max-height:220px;overflow:auto;background:#0d1824;border:1px solid #274159;border-radius:12px;padding:10px;font-size:12px}
+.attr-row{padding:5px 0;border-bottom:1px solid #1a2d40}
+.attr-key{color:#8fc7ff;font-weight:700}
+.signature{text-align:center;color:darkred;font-weight:800}
+.map-wrap{position:relative;flex:1}
+.topbar{
+  position:absolute;left:14px;right:14px;top:12px;z-index:1000;background:rgba(12,23,36,.94);
+  border:1px solid var(--line);border-radius:12px;padding:10px 12px
+}
+.topbar-left,.topbar-right{gap:10px}
+.status-dot{width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green)}
+#map,.leaflet-container{width:100%;height:100vh;background:#d8e6f3}
+.leaflet-control-layers{display:none}
+@media (max-width:900px){
+  .app-shell{flex-direction:column}
+  .sidebar{width:100%;min-width:100%;height:48vh}
+  .sidebar.collapsed{height:0}
+  .map-wrap,#map,.leaflet-container{height:52vh}
+}
