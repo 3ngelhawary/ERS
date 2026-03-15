@@ -38,6 +38,8 @@
 
   const els = {
     fileInput: document.getElementById("fileInput"),
+    dropZone: document.getElementById("dropZone"),
+    dropZoneFileName: document.getElementById("dropZoneFileName"),
     datasetTitle: document.getElementById("datasetTitle"),
     userName: document.getElementById("userName"),
     adminCode: document.getElementById("adminCode"),
@@ -204,8 +206,8 @@
     const item = state.items.find(function (x) { return x.id === id; });
     if (!item) return;
 
-    if (item.saved && !AppHelpers.isAdmin(els) && item.owner_name !== currentUser()) {
-      alert("Delete allowed for owner or admin only.");
+    if (!AppHelpers.isAdmin(els)) {
+      alert("Delete allowed for admin only.");
       return;
     }
 
@@ -256,6 +258,7 @@
   async function handleFileUpload(file) {
     if (!file) return;
     setStatus("Reading file: " + file.name);
+    els.dropZoneFileName.textContent = file.name;
 
     try {
       const name = file.name || "Imported File";
@@ -292,6 +295,7 @@
     AppPanel.clear(els.attributePanel);
     clearEditState();
     renderSidebar();
+    els.dropZoneFileName.textContent = "No file selected";
     setStatus("Unsaved layers cleared");
   }
 
@@ -321,6 +325,34 @@
         setStatus("Database sync failed");
       }
     );
+  }
+
+  function setupDragDrop() {
+    const stop = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    ["dragenter", "dragover", "dragleave", "drop"].forEach(function (eventName) {
+      els.dropZone.addEventListener(eventName, stop, false);
+    });
+
+    ["dragenter", "dragover"].forEach(function (eventName) {
+      els.dropZone.addEventListener(eventName, function () {
+        els.dropZone.classList.add("drag-over");
+      }, false);
+    });
+
+    ["dragleave", "drop"].forEach(function (eventName) {
+      els.dropZone.addEventListener(eventName, function () {
+        els.dropZone.classList.remove("drag-over");
+      }, false);
+    });
+
+    els.dropZone.addEventListener("drop", async function (e) {
+      const file = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files[0] : null;
+      await handleFileUpload(file);
+    }, false);
   }
 
   const actions = {
@@ -402,5 +434,6 @@
 
   setTimeout(function () { map.invalidateSize(); }, 300);
   AppPanel.clear(els.attributePanel);
+  setupDragDrop();
   startRealtimeSync();
 })();
