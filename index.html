@@ -36,9 +36,10 @@
       <section class="panel">
         <h2>Import</h2>
 
-        <label class="upload-box" for="fileInput">
-          <span>Upload GIS File</span>
+        <label class="upload-box drag-drop-box" id="dropZone" for="fileInput">
+          <span>Drag & Drop GIS File Here</span>
           <small>KMZ, KML, ZIP Shapefile, SHP</small>
+          <small id="dropZoneFileName">No file selected</small>
         </label>
 
         <input id="fileInput" type="file" accept=".kmz,.kml,.zip,.shp" />
