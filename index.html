@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Shared GIS Database Pro</title>
+  <title>GIS Pro Shared DB</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
@@ -18,9 +18,9 @@
       <div class="sidebar-top">
         <div class="brand-block">
           <div class="brand-icon">GIS</div>
-          <div>
+          <div class="brand-text">
             <h1>GIS Pro Shared DB</h1>
-            <p>Layers, attributes, real-time, locks</p>
+            <p>Real-time layers, edit lock, attribute table</p>
           </div>
         </div>
         <button class="collapse-btn" id="toggleSidebar" type="button">☰</button>
@@ -29,7 +29,7 @@
       <section class="panel">
         <h2>User</h2>
         <div class="grid">
-          <input id="userName" type="text" placeholder="User name (required for save)" />
+          <input id="userName" type="text" placeholder="User name (required for save/edit lock)" />
           <input id="adminCode" type="password" placeholder="Admin code" />
           <input id="datasetCategory" type="text" placeholder="Layer category" />
         </div>
@@ -42,20 +42,20 @@
             <option value="street">Street</option>
             <option value="satellite">Satellite</option>
           </select>
+          <select id="visibilityFilter">
+            <option value="all">Show All Layers</option>
+            <option value="visible">Visible Only</option>
+            <option value="hidden">Hidden Only</option>
+          </select>
         </div>
       </section>
 
       <section class="panel">
         <h2>Import</h2>
+        <div id="dropZone" class="upload-box">Drag &amp; Drop File Here</div>
+        <input id="fileInput" type="file" accept=".kmz,.kml,.zip,.shp,.dbf,.shx,.prj,.cpg" multiple hidden />
 
-        <div class="upload-box drag-drop-box" id="dropZone">
-          <span id="dropZoneTitle">Drag &amp; Drop File Here</span>
-          <small id="dropZoneFileName">Supported: KMZ, KML, ZIP Shapefile, or SHP + DBF + SHX</small>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="grid">
+        <div class="grid import-grid">
           <input id="datasetTitle" type="text" placeholder="Layer title" />
           <textarea id="datasetNotes" rows="2" placeholder="Notes"></textarea>
         </div>
@@ -78,11 +78,42 @@
 
       <section class="panel">
         <div class="panel-head">
-          <h2>Attributes</h2>
+          <h2>Attribute Table</h2>
           <button id="clearSelectionBtn" class="mini-btn" type="button">Clear</button>
         </div>
+        <div id="attributeSummary" class="attribute-summary">No feature selected</div>
+        <div id="attributeTableWrap" class="attribute-table-wrap">
+          <table id="attributeTable" class="attribute-table">
+            <thead>
+              <tr>
+                <th style="width: 40%">Field</th>
+                <th style="width: 60%">Value</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
 
-        <div id="attributePanel" class="attribute-panel"></div>
+      <section class="panel panel-small">
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-title">Saved Layers</div>
+            <div id="savedLayerCount" class="stat-value">0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-title">Unsaved Layers</div>
+            <div id="unsavedLayerCount" class="stat-value">0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-title">Visible Layers</div>
+            <div id="visibleLayerCount" class="stat-value">0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-title">Locked Layers</div>
+            <div id="lockedLayerCount" class="stat-value">0</div>
+          </div>
+        </div>
       </section>
 
       <section class="panel signature-panel">
@@ -115,13 +146,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script src="./app.config.js"></script>
-  <script src="./gis.parsers.js"></script>
-  <script src="./gis.ui.js"></script>
-  <script src="./app.helpers.js"></script>
-  <script src="./app.sidebar.js"></script>
-  <script src="./app.storage.js"></script>
-  <script src="./app.sync.js"></script>
-  <script src="./app.panel.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
