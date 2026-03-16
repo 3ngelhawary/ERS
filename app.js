@@ -12,7 +12,7 @@
 
   const map = L.map("map", { preferCanvas: true }).setView([24.7136, 46.6753], 6);
   const streetLayer = L.tileLayer(
-    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    "https://{s}.tile.openstreetmap.org/{z}/{y}/{x}.png".replace("{y}", "{y}"),
     { attribution: "&copy; OpenStreetMap contributors" }
   ).addTo(map);
   const satelliteLayer = L.tileLayer(
@@ -41,7 +41,6 @@
     activeId: null,
     activeFeatureRef: null,
     firstDbFitDone: false,
-    visibleFilter: "all",
     channel: null
   };
 
@@ -52,13 +51,14 @@
     userName: document.getElementById("userName"),
     adminCode: document.getElementById("adminCode"),
     datasetCategory: document.getElementById("datasetCategory"),
+    datasetGroup: document.getElementById("datasetGroup"),
     datasetNotes: document.getElementById("datasetNotes"),
     saveSelectedBtn: document.getElementById("saveSelectedBtn"),
     refreshDbBtn: document.getElementById("refreshDbBtn"),
     clearUnsavedBtn: document.getElementById("clearUnsavedBtn"),
     zoomAllBtn: document.getElementById("zoomAllBtn"),
     clearSelectionBtn: document.getElementById("clearSelectionBtn"),
-    layerList: document.getElementById("layerList"),
+    layerTree: document.getElementById("layerTree"),
     dbCountBadge: document.getElementById("dbCountBadge"),
     statusText: document.getElementById("statusText"),
     searchBox: document.getElementById("searchBox"),
@@ -176,6 +176,7 @@
       title: meta.title || "Untitled Layer",
       owner_name: meta.owner_name || "Guest",
       category: meta.category || "General",
+      group_name: meta.group_name || "General",
       notes: meta.notes || "",
       sourceType: meta.sourceType || "Unknown",
       uploadedAt: meta.uploadedAt || new Date().toISOString(),
@@ -237,7 +238,7 @@
           state.activeId = item.id;
           state.activeFeatureRef = { itemId: item.id, feature: feature };
           renderAttributeTable(feature.properties || {});
-          renderSidebar();
+          renderLayerTree();
         });
       }
     }).addTo(targetGroup);
@@ -252,7 +253,7 @@
 
     state.items.push(item);
     state.activeId = item.id;
-    renderSidebar();
+    renderLayerTree();
 
     if (fitMap !== false && item.leafletLayer) {
       fitToLayer(item.leafletLayer);
@@ -300,122 +301,158 @@
     els.dbCountBadge.textContent = String(state.items.filter(function (x) { return x.saved; }).length);
   }
 
-  function renderSidebar() {
+  function buildStyleBoxHtml(item, currentStyle) {
+    const styleColor = currentStyle && currentStyle.color ? currentStyle.color : item.color;
+    const styleFillOpacity = currentStyle && typeof currentStyle.fillOpacity === "number" ? currentStyle.fillOpacity : item.fillOpacity;
+    const styleWeight = currentStyle && typeof currentStyle.weight === "number" ? currentStyle.weight : item.lineWeight;
+
+    return '' +
+      '<div class="layer-style-box">' +
+        '<div class="layer-style-title">Style</div>' +
+        '<div class="layer-style-grid">' +
+          '<label class="field-label full">' +
+            '<span>Mode</span>' +
+            '<select class="style-mode">' +
+              '<option value="layer"' + (item.styleMode === "layer" ? " selected" : "") + '>Shared layer style</option>' +
+              '<option value="feature"' + (item.styleMode === "feature" ? " selected" : "") + '>Selected feature style</option>' +
+            '</select>' +
+          '</label>' +
+          '<label class="field-label">' +
+            '<span>Color</span>' +
+            '<input class="style-color" type="color" value="' + escapeHtml(styleColor) + '">' +
+          '</label>' +
+          '<label class="field-label">' +
+            '<span>Fill Opacity</span>' +
+            '<input class="style-fill" type="range" min="0" max="1" step="0.05" value="' + escapeHtml(String(styleFillOpacity)) + '">' +
+          '</label>' +
+          '<label class="field-label full">' +
+            '<span>Line Weight</span>' +
+            '<input class="style-weight" type="range" min="1" max="8" step="0.5" value="' + escapeHtml(String(styleWeight)) + '">' +
+          '</label>' +
+          '<button class="small-btn save full style-apply">Apply Style</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function renderLayerCard(item) {
+    const card = document.createElement("div");
+    const count = countFeatures(item.geojson);
+    const lockTxt = item.lockOwner ? ("Locked: " + item.lockOwner) : "Unlocked";
+    const currentStyle =
+      state.activeFeatureRef &&
+      state.activeFeatureRef.itemId === item.id &&
+      state.activeFeatureRef.feature &&
+      state.activeFeatureRef.feature.properties &&
+      state.activeFeatureRef.feature.properties._style
+        ? state.activeFeatureRef.feature.properties._style
+        : null;
+
+    card.className = "layer-card" + (state.activeId === item.id ? " active" : "");
+    card.innerHTML =
+      '<div class="layer-top">' +
+        '<div style="flex:1">' +
+          '<div class="layer-title">' + escapeHtml(item.title) + '</div>' +
+          '<div class="layer-meta">' +
+            'Group: ' + escapeHtml(item.group_name) +
+            '<br>Category: ' + escapeHtml(item.category) +
+            '<br>Owner: ' + escapeHtml(item.owner_name) +
+            '<br>Features: ' + count +
+            '<br>' + escapeHtml(lockTxt) +
+            '<br>Visible: ' + (item.visible !== false ? 'Yes' : 'No') +
+            '<br>Style: ' + escapeHtml(item.styleMode) +
+          '</div>' +
+        '</div>' +
+        '<div class="color-chip" style="background:' + item.color + '"></div>' +
+      '</div>' +
+      '<div class="layer-actions">' +
+        '<button class="small-btn view">View</button>' +
+        '<button class="small-btn toggle">' + (item.visible !== false ? 'Hide' : 'Show') + '</button>' +
+        '<button class="small-btn edit">Edit</button>' +
+        (item.saved ? ('<button class="small-btn lock">' + (item.lockOwner ? 'Unlock' : 'Lock') + '</button>') : '') +
+        (item.saved ? '' : '<button class="small-btn save">Save</button>') +
+        '<button class="small-btn delete">' + (item.saved ? 'Delete' : 'Remove') + '</button>' +
+      '</div>' +
+      buildStyleBoxHtml(item, currentStyle);
+
+    const buttons = card.querySelectorAll(".layer-actions button");
+    let i = 0;
+    buttons[i++].onclick = function () { focusItem(item.id); };
+    buttons[i++].onclick = function () { toggleVisibility(item.id); };
+    buttons[i++].onclick = function () { enableEdit(item.id); };
+    if (item.saved) buttons[i++].onclick = function () { toggleLock(item.id); };
+    if (!item.saved) buttons[i++].onclick = function () { saveItem(item.id); };
+    buttons[i++].onclick = function () { removeItem(item.id); };
+
+    const modeEl = card.querySelector(".style-mode");
+    const colorEl = card.querySelector(".style-color");
+    const fillEl = card.querySelector(".style-fill");
+    const weightEl = card.querySelector(".style-weight");
+    const applyEl = card.querySelector(".style-apply");
+
+    applyEl.onclick = function () {
+      applyStyleToItem(item.id, {
+        mode: modeEl.value,
+        color: colorEl.value,
+        fillOpacity: parseFloat(fillEl.value),
+        weight: parseFloat(weightEl.value)
+      });
+    };
+
+    return card;
+  }
+
+  function renderLayerTree() {
     const keyword = (els.searchBox.value || "").trim().toLowerCase();
     const filterMode = els.visibilityFilter.value;
-    els.layerList.innerHTML = "";
+    els.layerTree.innerHTML = "";
 
-    state.items
-      .filter(function (item) {
-        const keywordOk = !keyword || [item.title, item.owner_name, item.category, item.sourceType].some(function (v) {
-          return (v || "").toLowerCase().includes(keyword);
+    const filtered = state.items.filter(function (item) {
+      const keywordOk = !keyword || [item.title, item.owner_name, item.category, item.group_name, item.sourceType].some(function (v) {
+        return (v || "").toLowerCase().includes(keyword);
+      });
+
+      const visibleOk =
+        filterMode === "all" ||
+        (filterMode === "visible" && item.visible !== false) ||
+        (filterMode === "hidden" && item.visible === false);
+
+      return keywordOk && visibleOk;
+    });
+
+    const groups = {};
+    filtered.forEach(function (item) {
+      const g = item.group_name || "General";
+      if (!groups[g]) groups[g] = [];
+      groups[g].push(item);
+    });
+
+    Object.keys(groups).sort().forEach(function (groupName) {
+      const groupBox = document.createElement("div");
+      const groupHead = document.createElement("div");
+      const groupBody = document.createElement("div");
+
+      groupBox.className = "group-box";
+      groupHead.className = "group-head";
+      groupBody.className = "group-body";
+
+      groupHead.innerHTML =
+        '<div class="group-title">' + escapeHtml(groupName) + '</div>' +
+        '<div class="group-count">' + groups[groupName].length + ' layer(s)</div>';
+
+      groupHead.onclick = function () {
+        groupBox.classList.toggle("collapsed");
+      };
+
+      groups[groupName]
+        .sort(function (a, b) { return new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0); })
+        .forEach(function (item) {
+          groupBody.appendChild(renderLayerCard(item));
         });
 
-        const visibleOk =
-          filterMode === "all" ||
-          (filterMode === "visible" && item.visible !== false) ||
-          (filterMode === "hidden" && item.visible === false);
-
-        return keywordOk && visibleOk;
-      })
-      .sort(function (a, b) {
-        return new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0);
-      })
-      .forEach(function (item) {
-        const count = countFeatures(item.geojson);
-        const lockTxt = item.lockOwner ? ("Locked: " + item.lockOwner) : "Unlocked";
-        const card = document.createElement("div");
-        card.className = "layer-card" + (state.activeId === item.id ? " active" : "");
-
-        const currentStyle =
-          state.activeFeatureRef &&
-          state.activeFeatureRef.itemId === item.id &&
-          state.activeFeatureRef.feature &&
-          state.activeFeatureRef.feature.properties &&
-          state.activeFeatureRef.feature.properties._style
-            ? state.activeFeatureRef.feature.properties._style
-            : null;
-
-        const styleColor = currentStyle && currentStyle.color ? currentStyle.color : item.color;
-        const styleFillOpacity = currentStyle && typeof currentStyle.fillOpacity === "number" ? currentStyle.fillOpacity : item.fillOpacity;
-        const styleWeight = currentStyle && typeof currentStyle.weight === "number" ? currentStyle.weight : item.lineWeight;
-
-        card.innerHTML =
-          '<div class="layer-top">' +
-            '<div style="flex:1">' +
-              '<div class="layer-title">' + escapeHtml(item.title) + '</div>' +
-              '<div class="layer-meta">' +
-                escapeHtml(item.category) + " | " + escapeHtml(item.owner_name) +
-                "<br>Features: " + count +
-                "<br>" + escapeHtml(lockTxt) +
-                "<br>Visible: " + (item.visible !== false ? "Yes" : "No") +
-                "<br>Style: " + escapeHtml(item.styleMode) +
-              '</div>' +
-            '</div>' +
-            '<div class="color-chip" style="background:' + item.color + '"></div>' +
-          '</div>' +
-
-          '<div class="layer-actions">' +
-            '<button class="small-btn view">View</button>' +
-            '<button class="small-btn toggle">' + (item.visible !== false ? "Hide" : "Show") + '</button>' +
-            '<button class="small-btn edit">Edit</button>' +
-            (item.saved ? ('<button class="small-btn lock">' + (item.lockOwner ? "Unlock" : "Lock") + '</button>') : "") +
-            (item.saved ? "" : '<button class="small-btn save">Save</button>') +
-            '<button class="small-btn delete">' + (item.saved ? "Delete" : "Remove") + '</button>' +
-          '</div>' +
-
-          '<div class="layer-style-box">' +
-            '<div class="layer-style-title">Style</div>' +
-            '<div class="layer-style-grid">' +
-              '<label class="field-label full">' +
-                '<span>Mode</span>' +
-                '<select class="style-mode">' +
-                  '<option value="layer"' + (item.styleMode === "layer" ? " selected" : "") + '>Shared layer style</option>' +
-                  '<option value="feature"' + (item.styleMode === "feature" ? " selected" : "") + '>Selected feature style</option>' +
-                '</select>' +
-              '</label>' +
-              '<label class="field-label">' +
-                '<span>Color</span>' +
-                '<input class="style-color" type="color" value="' + escapeHtml(styleColor) + '">' +
-              '</label>' +
-              '<label class="field-label">' +
-                '<span>Fill Opacity</span>' +
-                '<input class="style-fill" type="range" min="0" max="1" step="0.05" value="' + escapeHtml(String(styleFillOpacity)) + '">' +
-              '</label>' +
-              '<label class="field-label full">' +
-                '<span>Line Weight</span>' +
-                '<input class="style-weight" type="range" min="1" max="8" step="0.5" value="' + escapeHtml(String(styleWeight)) + '">' +
-              '</label>' +
-              '<button class="small-btn save full style-apply">Apply Style</button>' +
-            '</div>' +
-          '</div>';
-
-        const buttons = card.querySelectorAll(".layer-actions button");
-        let i = 0;
-        buttons[i++].onclick = function () { focusItem(item.id); };
-        buttons[i++].onclick = function () { toggleVisibility(item.id); };
-        buttons[i++].onclick = function () { enableEdit(item.id); };
-        if (item.saved) buttons[i++].onclick = function () { toggleLock(item.id); };
-        if (!item.saved) buttons[i++].onclick = function () { saveItem(item.id); };
-        buttons[i++].onclick = function () { removeItem(item.id); };
-
-        const modeEl = card.querySelector(".style-mode");
-        const colorEl = card.querySelector(".style-color");
-        const fillEl = card.querySelector(".style-fill");
-        const weightEl = card.querySelector(".style-weight");
-        const applyEl = card.querySelector(".style-apply");
-
-        applyEl.onclick = function () {
-          applyStyleToItem(item.id, {
-            mode: modeEl.value,
-            color: colorEl.value,
-            fillOpacity: parseFloat(fillEl.value),
-            weight: parseFloat(weightEl.value)
-          });
-        };
-
-        els.layerList.appendChild(card);
-      });
+      groupBox.appendChild(groupHead);
+      groupBox.appendChild(groupBody);
+      els.layerTree.appendChild(groupBox);
+    });
 
     renderStats();
   }
@@ -424,7 +461,7 @@
     const item = state.items.find(function (x) { return x.id === id; });
     if (!item || !item.leafletLayer) return;
     state.activeId = id;
-    renderSidebar();
+    renderLayerTree();
     fitToLayer(item.leafletLayer);
   }
 
@@ -453,7 +490,7 @@
     });
 
     fitToLayer(item.leafletLayer);
-    renderSidebar();
+    renderLayerTree();
     setStatus("Editing: " + item.title);
   }
 
@@ -473,6 +510,7 @@
       title: item.title,
       owner_name: item.owner_name,
       category: item.category,
+      group_name: item.group_name,
       notes: item.notes,
       color: item.color,
       fill_opacity: item.fillOpacity,
@@ -505,7 +543,7 @@
       .single();
 
     if (inserted.error) throw inserted.error;
-    return inserted.data.id;
+      return inserted.data.id;
   }
 
   async function replaceFeatures(layerId, geojson) {
@@ -547,15 +585,29 @@
       }
 
       item.owner_name = currentUser();
-      item.layerId = await saveLayerRow(item);
-      await replaceFeatures(item.layerId, item.geojson);
-      item.saved = true;
+      item.group_name = (item.group_name || els.datasetGroup.value || "General").trim() || "General";
 
+      let createdLayerId = null;
+      let featuresSaved = false;
+
+      try {
+        createdLayerId = await saveLayerRow(item);
+        item.layerId = createdLayerId;
+        await replaceFeatures(item.layerId, item.geojson);
+        featuresSaved = true;
+      } catch (innerErr) {
+        if (createdLayerId && !featuresSaved) {
+          await supabaseClient.from(AppConfig.layersTable).delete().eq("id", createdLayerId);
+        }
+        throw innerErr;
+      }
+
+      item.saved = true;
       removeLeafletLayer(item);
       state.items = state.items.filter(function (x) { return x.id !== item.id; });
       state.activeId = null;
       clearEditState();
-      renderSidebar();
+      renderLayerTree();
       setStatus("Saved successfully");
     } catch (err) {
       alert("Save error: " + err.message);
@@ -589,7 +641,7 @@
 
       clearAttributeTable();
       clearEditState();
-      renderSidebar();
+      renderLayerTree();
       setStatus("Removed: " + item.title);
     } catch (err) {
       alert("Delete error: " + err.message);
@@ -605,7 +657,7 @@
       item.visible = !item.visible;
       if (item.visible && !item.leafletLayer) createLayer(item, unsavedGroup);
       if (!item.visible) removeLeafletLayer(item);
-      renderSidebar();
+      renderLayerTree();
       return;
     }
 
@@ -661,12 +713,10 @@
       item.lineWeight = styleValues.weight;
     } else {
       item.styleMode = "feature";
-
       if (!state.activeFeatureRef || state.activeFeatureRef.itemId !== item.id) {
         alert("Select a feature from this layer first.");
         return;
       }
-
       state.activeFeatureRef.feature.properties = state.activeFeatureRef.feature.properties || {};
       state.activeFeatureRef.feature.properties._style = {
         color: styleValues.color,
@@ -677,7 +727,7 @@
 
     removeLeafletLayer(item);
     if (item.visible !== false) createLayer(item, item.saved ? savedGroup : unsavedGroup);
-    renderSidebar();
+    renderLayerTree();
 
     if (item.saved) {
       try {
@@ -716,25 +766,30 @@
       });
     });
 
-    return (layersResult.data || []).map(function (row) {
-      return {
-        layerId: row.id,
-        title: row.title || "Untitled",
-        owner_name: row.owner_name || "Guest",
-        category: row.category || "General",
-        notes: row.notes || "",
-        sourceType: "Database",
-        uploadedAt: row.created_at || new Date().toISOString(),
-        color: row.color || "#1f9bff",
-        fillOpacity: typeof row.fill_opacity === "number" ? row.fill_opacity : 0.25,
-        lineWeight: typeof row.line_weight === "number" ? row.line_weight : 1.2,
-        styleMode: row.style_mode || "layer",
-        visible: row.visible !== false,
-        lockOwner: row.lock_owner || "",
-        lockedAt: row.locked_at || "",
-        geojson: featuresToCollection(byLayer[row.id] || [])
-      };
-    });
+    return (layersResult.data || [])
+      .filter(function (row) {
+        return (byLayer[row.id] || []).length > 0;
+      })
+      .map(function (row) {
+        return {
+          layerId: row.id,
+          title: row.title || "Untitled",
+          owner_name: row.owner_name || "Guest",
+          category: row.category || "General",
+          group_name: row.group_name || "General",
+          notes: row.notes || "",
+          sourceType: "Database",
+          uploadedAt: row.created_at || new Date().toISOString(),
+          color: row.color || "#1f9bff",
+          fillOpacity: typeof row.fill_opacity === "number" ? row.fill_opacity : 0.25,
+          lineWeight: typeof row.line_weight === "number" ? row.line_weight : 1.2,
+          styleMode: row.style_mode || "layer",
+          visible: row.visible !== false,
+          lockOwner: row.lock_owner || "",
+          lockedAt: row.locked_at || "",
+          geojson: featuresToCollection(byLayer[row.id] || [])
+        };
+      });
   }
 
   function syncSavedRows(rows) {
@@ -750,6 +805,7 @@
           title: row.title,
           owner_name: row.owner_name,
           category: row.category,
+          group_name: row.group_name,
           notes: row.notes,
           sourceType: row.sourceType,
           uploadedAt: row.uploadedAt,
@@ -771,7 +827,7 @@
     });
 
     state.items = unsavedItems.concat(rebuilt);
-    renderSidebar();
+    renderLayerTree();
   }
 
   async function startRealtimeSync() {
@@ -819,9 +875,7 @@
     const kmlName = Object.keys(zip.files).find(function (name) {
       return name.toLowerCase().endsWith(".kml");
     });
-
     if (!kmlName) throw new Error("No KML found inside KMZ.");
-
     const text = await zip.file(kmlName).async("string");
     return parseKmlText(text);
   }
@@ -879,6 +933,7 @@
           title: els.datasetTitle.value.trim() || result.name.replace(/\.[^.]+$/, ""),
           owner_name: currentUser() || "Guest",
           category: els.datasetCategory.value.trim() || "General",
+          group_name: (els.datasetGroup.value || "General").trim() || "General",
           notes: els.datasetNotes.value.trim() || "",
           sourceType: result.sourceType,
           uploadedAt: new Date().toISOString(),
@@ -910,7 +965,7 @@
     state.activeId = null;
     clearAttributeTable();
     clearEditState();
-    renderSidebar();
+    renderLayerTree();
     setStatus("Unsaved layers cleared");
   }
 
@@ -951,6 +1006,7 @@
         title: els.datasetTitle.value.trim() || "Drawn Layer",
         owner_name: currentUser() || "Guest",
         category: els.datasetCategory.value.trim() || "General",
+        group_name: (els.datasetGroup.value || "General").trim() || "General",
         notes: els.datasetNotes.value.trim() || "",
         sourceType: "Draw",
         uploadedAt: new Date().toISOString(),
@@ -978,7 +1034,7 @@
       await updateGeoJsonFromEditable(item);
       removeLeafletLayer(item);
       if (item.visible !== false) createLayer(item, item.saved ? savedGroup : unsavedGroup);
-      renderSidebar();
+      renderLayerTree();
       setStatus("Layer updated: " + item.title);
     } catch (err) {
       setStatus("Edit update failed");
@@ -1006,13 +1062,13 @@
   els.refreshDbBtn.addEventListener("click", startRealtimeSync);
   els.clearUnsavedBtn.addEventListener("click", clearUnsaved);
   els.zoomAllBtn.addEventListener("click", zoomAll);
-  els.searchBox.addEventListener("input", renderSidebar);
-  els.visibilityFilter.addEventListener("change", renderSidebar);
+  els.searchBox.addEventListener("input", renderLayerTree);
+  els.visibilityFilter.addEventListener("change", renderLayerTree);
 
   els.clearSelectionBtn.addEventListener("click", function () {
     state.activeId = null;
     clearAttributeTable();
-    renderSidebar();
+    renderLayerTree();
   });
 
   els.toggleSidebar.addEventListener("click", function () {
