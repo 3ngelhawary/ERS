@@ -12,12 +12,10 @@
   );
 
   const map = L.map("map", { preferCanvas: true }).setView([24.7136, 46.6753], 6);
-
   const streetLayer = L.tileLayer(
     "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     { attribution: "&copy; OpenStreetMap contributors" }
   ).addTo(map);
-
   const satelliteLayer = L.tileLayer(
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
     { attribution: "Tiles &copy; Esri" }
@@ -42,8 +40,8 @@
   const state = {
     items: [],
     activeId: null,
+    activeFeatureRef: null,
     firstDbFitDone: false,
-    visibleFilter: "all",
     channel: null
   };
 
@@ -74,7 +72,12 @@
     savedLayerCount: document.getElementById("savedLayerCount"),
     unsavedLayerCount: document.getElementById("unsavedLayerCount"),
     visibleLayerCount: document.getElementById("visibleLayerCount"),
-    lockedLayerCount: document.getElementById("lockedLayerCount")
+    lockedLayerCount: document.getElementById("lockedLayerCount"),
+    styleModeSelect: document.getElementById("styleModeSelect"),
+    styleColor: document.getElementById("styleColor"),
+    styleFillOpacity: document.getElementById("styleFillOpacity"),
+    styleLineWeight: document.getElementById("styleLineWeight"),
+    applyStyleBtn: document.getElementById("applyStyleBtn")
   };
 
   function setStatus(text) {
@@ -134,41 +137,12 @@
   }
 
   function countFeatures(geojson) {
-    const normalized = normalizeGeoJson(geojson);
-    return normalized.features.length;
-  }
-
-  function buildItem(meta, geojson, saved, layerId, color) {
-    return {
-      id: uid(),
-      layerId: layerId || null,
-      saved: !!saved,
-      title: meta.title || "Untitled Layer",
-      owner_name: meta.owner_name || "Guest",
-      category: meta.category || "General",
-      notes: meta.notes || "",
-      sourceType: meta.sourceType || "Unknown",
-      uploadedAt: meta.uploadedAt || new Date().toISOString(),
-      visible: meta.visible !== false,
-      lockOwner: meta.lockOwner || "",
-      lockedAt: meta.lockedAt || "",
-      color: color || getColorBySource(meta.sourceType),
-      geojson: normalizeGeoJson(geojson),
-      leafletLayer: null
-    };
+    return normalizeGeoJson(geojson).features.length;
   }
 
   function splitFeatureCollection(geojson) {
     const normalized = normalizeGeoJson(geojson);
-    return normalized.features
-      .filter(function (feature) { return !!feature.geometry; })
-      .map(function (feature) {
-        return {
-          type: "Feature",
-          properties: feature.properties || {},
-          geometry: feature.geometry
-        };
-      });
+    return normalized.features.filter(function (f) { return !!f.geometry; });
   }
 
   function featuresToCollection(features) {
@@ -187,6 +161,7 @@
   function clearAttributeTable() {
     els.attributeSummary.textContent = "No feature selected";
     els.attributeTable.innerHTML = "";
+    state.activeFeatureRef = null;
   }
 
   function renderAttributeTable(props) {
@@ -197,6 +172,29 @@
     }).join("");
   }
 
+  function buildItem(meta, geojson, saved, layerId, color, fillOpacity, lineWeight, styleMode) {
+    return {
+      id: uid(),
+      layerId: layerId || null,
+      saved: !!saved,
+      title: meta.title || "Untitled Layer",
+      owner_name: meta.owner_name || "Guest",
+      category: meta.category || "General",
+      notes: meta.notes || "",
+      sourceType: meta.sourceType || "Unknown",
+      uploadedAt: meta.uploadedAt || new Date().toISOString(),
+      visible: meta.visible !== false,
+      lockOwner: meta.lockOwner || "",
+      lockedAt: meta.lockedAt || "",
+      color: color || getColorBySource(meta.sourceType),
+      fillOpacity: typeof fillOpacity === "number" ? fillOpacity : 0.25,
+      lineWeight: typeof lineWeight === "number" ? lineWeight : 1.2,
+      styleMode: styleMode || "layer",
+      geojson: normalizeGeoJson(geojson),
+      leafletLayer: null
+    };
+  }
+
   function removeLeafletLayer(item) {
     if (!item || !item.leafletLayer) return;
     savedGroup.removeLayer(item.leafletLayer);
@@ -204,55 +202,59 @@
     item.leafletLayer = null;
   }
 
-  function createLayer(item, targetGroup) {
-    const color = item.color;
+  function getFeatureStyle(feature, item) {
+    const featureStyle = feature && feature.properties && feature.properties._style ? feature.properties._style : null;
+    const useFeatureStyle = item.styleMode === "feature" && featureStyle;
+    return {
+      color: useFeatureStyle && featureStyle.color ? featureStyle.color : item.color,
+      fillColor: useFeatureStyle && featureStyle.color ? featureStyle.color : item.color,
+      weight: useFeatureStyle && typeof featureStyle.weight === "number" ? featureStyle.weight : item.lineWeight,
+      fillOpacity: useFeatureStyle && typeof featureStyle.fillOpacity === "number" ? featureStyle.fillOpacity : item.fillOpacity
+    };
+  }
 
+  function applyStyleControlsFromLayer(item) {
+    els.styleModeSelect.value = item.styleMode || "layer";
+    els.styleColor.value = item.color || "#1f9bff";
+    els.styleFillOpacity.value = String(item.fillOpacity ?? 0.25);
+    els.styleLineWeight.value = String(item.lineWeight ?? 1.2);
+  }
+
+  function createLayer(item, targetGroup) {
     item.leafletLayer = L.geoJSON(item.geojson, {
       renderer: canvasRenderer,
-      style: function () {
-        return {
-          color: color,
-          fillColor: color,
-          weight: 1.2,
-          fillOpacity: 0.25
-        };
+      style: function (feature) {
+        return getFeatureStyle(feature, item);
       },
       pointToLayer: function (feature, latlng) {
+        const style = getFeatureStyle(feature, item);
         return L.circleMarker(latlng, {
           renderer: canvasRenderer,
           radius: 4,
-          color: color,
-          fillColor: color,
-          fillOpacity: 0.9,
-          weight: 1
+          color: style.color,
+          fillColor: style.fillColor,
+          fillOpacity: Math.max(style.fillOpacity, 0.35),
+          weight: Math.max(style.weight, 1)
         });
       },
       onEachFeature: function (feature, lyr) {
         lyr.on("click", function () {
           state.activeId = item.id;
+          state.activeFeatureRef = { itemId: item.id, feature: feature };
           renderAttributeTable(feature.properties || {});
+          applyStyleControlsFromLayer(item);
+
+          if (item.styleMode === "feature" && feature.properties && feature.properties._style) {
+            const s = feature.properties._style;
+            if (s.color) els.styleColor.value = s.color;
+            if (typeof s.fillOpacity === "number") els.styleFillOpacity.value = String(s.fillOpacity);
+            if (typeof s.weight === "number") els.styleLineWeight.value = String(s.weight);
+          }
+
           renderSidebar();
         });
       }
     }).addTo(targetGroup);
-  }
-
-  function addItem(meta, geojson, saved, layerId, color, fitMap) {
-    const item = buildItem(meta, geojson, saved, layerId, color);
-
-    if (item.visible !== false) {
-      createLayer(item, saved ? savedGroup : unsavedGroup);
-    }
-
-    state.items.push(item);
-    state.activeId = item.id;
-    renderSidebar();
-
-    if (fitMap !== false && item.leafletLayer) {
-      fitToLayer(item.leafletLayer);
-    }
-
-    return item;
   }
 
   function fitToLayer(layer) {
@@ -271,7 +273,9 @@
     unsavedGroup.eachLayer(function (l) { group.addLayer(l); });
     try {
       const bounds = group.getBounds();
-      if (bounds && bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
+      if (bounds && bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [40, 40] });
+      }
     } catch (e) {
     }
   }
@@ -287,16 +291,11 @@
   }
 
   function renderStats() {
-    const savedCount = state.items.filter(function (x) { return x.saved; }).length;
-    const unsavedCount = state.items.filter(function (x) { return !x.saved; }).length;
-    const visibleCount = state.items.filter(function (x) { return x.visible !== false; }).length;
-    const lockedCount = state.items.filter(function (x) { return !!x.lockOwner; }).length;
-
-    els.savedLayerCount.textContent = String(savedCount);
-    els.unsavedLayerCount.textContent = String(unsavedCount);
-    els.visibleLayerCount.textContent = String(visibleCount);
-    els.lockedLayerCount.textContent = String(lockedCount);
-    els.dbCountBadge.textContent = String(savedCount);
+    els.savedLayerCount.textContent = String(state.items.filter(function (x) { return x.saved; }).length);
+    els.unsavedLayerCount.textContent = String(state.items.filter(function (x) { return !x.saved; }).length);
+    els.visibleLayerCount.textContent = String(state.items.filter(function (x) { return x.visible !== false; }).length);
+    els.lockedLayerCount.textContent = String(state.items.filter(function (x) { return !!x.lockOwner; }).length);
+    els.dbCountBadge.textContent = String(state.items.filter(function (x) { return x.saved; }).length);
   }
 
   function renderSidebar() {
@@ -321,9 +320,9 @@
         return new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0);
       })
       .forEach(function (item) {
+        const card = document.createElement("div");
         const count = countFeatures(item.geojson);
         const lockTxt = item.lockOwner ? ("Locked: " + item.lockOwner) : "Unlocked";
-        const card = document.createElement("div");
 
         card.className = "layer-card" + (state.activeId === item.id ? " active" : "");
         card.innerHTML =
@@ -335,6 +334,7 @@
                 "<br>Features: " + count +
                 "<br>" + escapeHtml(lockTxt) +
                 "<br>Visible: " + (item.visible !== false ? "Yes" : "No") +
+                "<br>Style: " + escapeHtml(item.styleMode) +
               '</div>' +
             '</div>' +
             '<div class="color-chip" style="background:' + item.color + '"></div>' +
@@ -350,20 +350,21 @@
 
         const btns = card.querySelectorAll("button");
         let i = 0;
-
-        btns[i++].onclick = function () { focusItem(item.id); };
+        btns[i++].onclick = function () {
+          state.activeId = item.id;
+          applyStyleControlsFromLayer(item);
+          focusItem(item.id);
+        };
         btns[i++].onclick = function () { toggleVisibility(item.id); };
-        btns[i++].onclick = function () { enableEdit(item.id); };
-
-        if (item.saved) {
-          btns[i++].onclick = function () { toggleLock(item.id); };
-        }
-
-        if (!item.saved) {
-          btns[i++].onclick = function () { saveItem(item.id); };
-        }
-
+        btns[i++].onclick = function () {
+          state.activeId = item.id;
+          applyStyleControlsFromLayer(item);
+          enableEdit(item.id);
+        };
+        if (item.saved) btns[i++].onclick = function () { toggleLock(item.id); };
+        if (!item.saved) btns[i++].onclick = function () { saveItem(item.id); };
         btns[i++].onclick = function () { removeItem(item.id); };
+
         els.layerList.appendChild(card);
       });
 
@@ -415,10 +416,7 @@
       if (gj.type === "FeatureCollection") gj.features.forEach(function (f) { features.push(f); });
       else if (gj.type === "Feature") features.push(gj);
     });
-
-    if (features.length > 0) {
-      item.geojson = { type: "FeatureCollection", features: features };
-    }
+    if (features.length > 0) item.geojson = { type: "FeatureCollection", features: features };
   }
 
   async function saveLayerRow(item) {
@@ -428,6 +426,9 @@
       category: item.category,
       notes: item.notes,
       color: item.color,
+      fill_opacity: item.fillOpacity,
+      line_weight: item.lineWeight,
+      style_mode: item.styleMode,
       visible: item.visible !== false,
       lock_owner: item.lockOwner || null,
       locked_at: item.lockedAt || null,
@@ -455,7 +456,7 @@
       .single();
 
     if (inserted.error) throw inserted.error;
-      return inserted.data.id;
+    return inserted.data.id;
   }
 
   async function replaceFeatures(layerId, geojson) {
@@ -535,9 +536,7 @@
       removeLeafletLayer(item);
       state.items = state.items.filter(function (x) { return x.id !== id; });
 
-      if (state.activeId === id) {
-        state.activeId = null;
-      }
+      if (state.activeId === id) state.activeId = null;
 
       clearAttributeTable();
       clearEditState();
@@ -569,9 +568,7 @@
       })
       .eq("id", item.layerId);
 
-    if (result.error) {
-      alert("Visibility error: " + result.error.message);
-    }
+    if (result.error) alert("Visibility error: " + result.error.message);
   }
 
   async function toggleLock(id) {
@@ -596,9 +593,54 @@
       })
       .eq("id", item.layerId);
 
-    if (result.error) {
-      alert("Lock error: " + result.error.message);
+    if (result.error) alert("Lock error: " + result.error.message);
+  }
+
+  function findActiveItem() {
+    return state.items.find(function (x) { return x.id === state.activeId; }) || null;
+  }
+
+  async function applyStyleChange() {
+    const item = findActiveItem();
+    if (!item) {
+      alert("Select a layer first.");
+      return;
     }
+
+    if (item.saved && !canEdit(item)) {
+      alert("Layer locked by: " + item.lockOwner);
+      return;
+    }
+
+    const styleMode = els.styleModeSelect.value;
+    const color = els.styleColor.value;
+    const fillOpacity = parseFloat(els.styleFillOpacity.value);
+    const lineWeight = parseFloat(els.styleLineWeight.value);
+
+    if (styleMode === "layer") {
+      item.styleMode = "layer";
+      item.color = color;
+      item.fillOpacity = fillOpacity;
+      item.lineWeight = lineWeight;
+    } else {
+      item.styleMode = "feature";
+      if (!state.activeFeatureRef || state.activeFeatureRef.itemId !== item.id) {
+        alert("Select a feature on the map first.");
+        return;
+      }
+      const feature = state.activeFeatureRef.feature;
+      feature.properties = feature.properties || {};
+      feature.properties._style = {
+        color: color,
+        fillOpacity: fillOpacity,
+        weight: lineWeight
+      };
+    }
+
+    removeLeafletLayer(item);
+    if (item.visible !== false) createLayer(item, item.saved ? savedGroup : unsavedGroup);
+    renderSidebar();
+    setStatus("Style updated" + (item.saved ? " - click Save Selected to publish changes" : ""));
   }
 
   async function loadAllRows() {
@@ -634,6 +676,9 @@
         sourceType: "Database",
         uploadedAt: row.created_at || new Date().toISOString(),
         color: row.color || "#1f9bff",
+        fillOpacity: typeof row.fill_opacity === "number" ? row.fill_opacity : 0.25,
+        lineWeight: typeof row.line_weight === "number" ? row.line_weight : 1.2,
+        styleMode: row.style_mode || "layer",
         visible: row.visible !== false,
         lockOwner: row.lock_owner || "",
         lockedAt: row.locked_at || "",
@@ -665,13 +710,13 @@
         row.geojson,
         true,
         row.layerId,
-        row.color
+        row.color,
+        row.fillOpacity,
+        row.lineWeight,
+        row.styleMode
       );
 
-      if (item.visible !== false) {
-        createLayer(item, savedGroup);
-      }
-
+      if (item.visible !== false) createLayer(item, savedGroup);
       return item;
     });
 
@@ -690,34 +735,22 @@
 
       state.channel = supabaseClient.channel("gis-live-sync");
 
+      async function reloadShared() {
+        const rows = await loadAllRows();
+        syncSavedRows(rows);
+        if (!state.firstDbFitDone) {
+          zoomAll();
+          state.firstDbFitDone = true;
+        }
+        setStatus("Database synced");
+      }
+
       state.channel
-        .on("postgres_changes", { event: "*", schema: "public", table: AppConfig.layersTable }, async function () {
-          const rows = await loadAllRows();
-          syncSavedRows(rows);
-          if (!state.firstDbFitDone) {
-            zoomAll();
-            state.firstDbFitDone = true;
-          }
-          setStatus("Database synced");
-        })
-        .on("postgres_changes", { event: "*", schema: "public", table: AppConfig.featuresTable }, async function () {
-          const rows = await loadAllRows();
-          syncSavedRows(rows);
-          if (!state.firstDbFitDone) {
-            zoomAll();
-            state.firstDbFitDone = true;
-          }
-          setStatus("Database synced");
-        })
+        .on("postgres_changes", { event: "*", schema: "public", table: AppConfig.layersTable }, reloadShared)
+        .on("postgres_changes", { event: "*", schema: "public", table: AppConfig.featuresTable }, reloadShared)
         .subscribe(async function (status) {
           if (status === "SUBSCRIBED") {
-            const rows = await loadAllRows();
-            syncSavedRows(rows);
-            if (!state.firstDbFitDone) {
-              zoomAll();
-              state.firstDbFitDone = true;
-            }
-            setStatus("Database synced");
+            await reloadShared();
           }
         });
     } catch (err) {
@@ -739,9 +772,7 @@
     const kmlName = Object.keys(zip.files).find(function (name) {
       return name.toLowerCase().endsWith(".kml");
     });
-
     if (!kmlName) throw new Error("No KML found inside KMZ.");
-
     const text = await zip.file(kmlName).async("string");
     return parseKmlText(text);
   }
@@ -756,15 +787,10 @@
       throw new Error("SHP requires .shp + .dbf + .shx together.");
     }
 
-    if (!prjFile) {
-      alert("Warning: .prj file is missing for this SHP.");
-    }
+    if (!prjFile) alert("Warning: .prj file is missing for this SHP.");
 
     const zip = new JSZip();
-    Array.from(files).forEach(function (f) {
-      zip.file(f.name, f);
-    });
-
+    Array.from(files).forEach(function (f) { zip.file(f.name, f); });
     const zipped = await zip.generateAsync({ type: "arraybuffer" });
     return normalizeGeoJson(await shp(zipped));
   }
@@ -777,36 +803,20 @@
     const kmlFile = list.find(function (f) { return /\.kml$/i.test(f.name); });
 
     if (kmzFile) {
-      return {
-        name: kmzFile.name,
-        sourceType: "KMZ",
-        geojson: await parseKmz(await kmzFile.arrayBuffer())
-      };
+      return { name: kmzFile.name, sourceType: "KMZ", geojson: await parseKmz(await kmzFile.arrayBuffer()) };
     }
 
     if (kmlFile) {
-      return {
-        name: kmlFile.name,
-        sourceType: "KML",
-        geojson: await parseKmlText(await kmlFile.text())
-      };
+      return { name: kmlFile.name, sourceType: "KML", geojson: await parseKmlText(await kmlFile.text()) };
     }
 
     if (zipFile) {
-      return {
-        name: zipFile.name,
-        sourceType: "ZIP Shapefile",
-        geojson: normalizeGeoJson(await shp(await zipFile.arrayBuffer()))
-      };
+      return { name: zipFile.name, sourceType: "ZIP Shapefile", geojson: normalizeGeoJson(await shp(await zipFile.arrayBuffer())) };
     }
 
     if (sourceType === "SHP") {
       const shpFile = list.find(function (f) { return /\.shp$/i.test(f.name); });
-      return {
-        name: shpFile.name,
-        sourceType: "SHP",
-        geojson: await parseShpFamily(list)
-      };
+      return { name: shpFile.name, sourceType: "SHP", geojson: await parseShpFamily(list) };
     }
 
     throw new Error("Supported: KMZ, KML, ZIP Shapefile, or SHP family.");
@@ -834,9 +844,10 @@
         false,
         null,
         getColorBySource(result.sourceType),
-        true
+        0.25,
+        1.2,
+        "layer"
       );
-
       setStatus("Imported: " + result.name);
     } catch (err) {
       alert("Import error: " + err.message);
@@ -848,7 +859,6 @@
     state.items.filter(function (x) { return !x.saved; }).forEach(function (item) {
       removeLeafletLayer(item);
     });
-
     state.items = state.items.filter(function (x) { return x.saved; });
     state.activeId = null;
     clearAttributeTable();
@@ -905,9 +915,10 @@
       false,
       null,
       getColorBySource("Draw"),
-      true
+      0.25,
+      1.2,
+      "layer"
     );
-
     enableEdit(state.activeId);
   });
 
@@ -947,15 +958,15 @@
   els.refreshDbBtn.addEventListener("click", startRealtimeSync);
   els.clearUnsavedBtn.addEventListener("click", clearUnsaved);
   els.zoomAllBtn.addEventListener("click", zoomAll);
-
   els.searchBox.addEventListener("input", renderSidebar);
   els.visibilityFilter.addEventListener("change", renderSidebar);
-
   els.clearSelectionBtn.addEventListener("click", function () {
     state.activeId = null;
     clearAttributeTable();
     renderSidebar();
   });
+
+  els.applyStyleBtn.addEventListener("click", applyStyleChange);
 
   els.toggleSidebar.addEventListener("click", function () {
     toggleSidebarView(false);
