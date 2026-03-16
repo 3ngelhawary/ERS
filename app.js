@@ -11,14 +11,34 @@
   );
 
   const map = L.map("map", { preferCanvas: true }).setView([24.7136, 46.6753], 6);
+
   const streetLayer = L.tileLayer(
-    "https://{s}.tile.openstreetmap.org/{z}/{y}/{x}.png".replace("{y}", "{y}"),
-    { attribution: "&copy; OpenStreetMap contributors" }
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {
+      attribution: "&copy; OpenStreetMap contributors",
+      maxZoom: 22,
+      maxNativeZoom: 19,
+      crossOrigin: true
+    }
   ).addTo(map);
+
   const satelliteLayer = L.tileLayer(
-    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    { attribution: "Tiles &copy; Esri" }
+    "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    {
+      attribution: "Tiles &copy; Esri",
+      maxZoom: 22,
+      maxNativeZoom: 19,
+      crossOrigin: true
+    }
   );
+
+  streetLayer.on("tileerror", function () {
+    setStatus("Street basemap tile error");
+  });
+
+  satelliteLayer.on("tileerror", function () {
+    setStatus("Satellite basemap tile error");
+  });
 
   const savedGroup = L.featureGroup().addTo(map);
   const unsavedGroup = L.featureGroup().addTo(map);
@@ -543,7 +563,7 @@
       .single();
 
     if (inserted.error) throw inserted.error;
-      return inserted.data.id;
+    return inserted.data.id;
   }
 
   async function replaceFeatures(layerId, geojson) {
