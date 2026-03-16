@@ -5,7 +5,6 @@
     return;
   }
 
-  const canvasRenderer = L.canvas({ padding: 0.5 });
   const supabaseClient = window.supabase.createClient(
     AppConfig.supabaseUrl,
     AppConfig.supabaseAnonKey
@@ -42,6 +41,7 @@
     activeId: null,
     activeFeatureRef: null,
     firstDbFitDone: false,
+    visibleFilter: "all",
     channel: null
   };
 
@@ -68,16 +68,11 @@
     basemapSelect: document.getElementById("basemapSelect"),
     visibilityFilter: document.getElementById("visibilityFilter"),
     attributeSummary: document.getElementById("attributeSummary"),
-    attributeTable: document.getElementById("attributeTable").querySelector("tbody"),
+    attributeTableBody: document.getElementById("attributeTableBody"),
     savedLayerCount: document.getElementById("savedLayerCount"),
     unsavedLayerCount: document.getElementById("unsavedLayerCount"),
     visibleLayerCount: document.getElementById("visibleLayerCount"),
-    lockedLayerCount: document.getElementById("lockedLayerCount"),
-    styleModeSelect: document.getElementById("styleModeSelect"),
-    styleColor: document.getElementById("styleColor"),
-    styleFillOpacity: document.getElementById("styleFillOpacity"),
-    styleLineWeight: document.getElementById("styleLineWeight"),
-    applyStyleBtn: document.getElementById("applyStyleBtn")
+    lockedLayerCount: document.getElementById("lockedLayerCount")
   };
 
   function setStatus(text) {
@@ -141,8 +136,9 @@
   }
 
   function splitFeatureCollection(geojson) {
-    const normalized = normalizeGeoJson(geojson);
-    return normalized.features.filter(function (f) { return !!f.geometry; });
+    return normalizeGeoJson(geojson).features.filter(function (f) {
+      return !!f.geometry;
+    });
   }
 
   function featuresToCollection(features) {
@@ -160,14 +156,14 @@
 
   function clearAttributeTable() {
     els.attributeSummary.textContent = "No feature selected";
-    els.attributeTable.innerHTML = "";
+    els.attributeTableBody.innerHTML = "";
     state.activeFeatureRef = null;
   }
 
   function renderAttributeTable(props) {
-    const keys = Object.keys(props || {});
+    const keys = Object.keys(props || {}).filter(function (k) { return k !== "_style"; });
     els.attributeSummary.textContent = keys.length ? ("Fields: " + keys.length) : "No attributes";
-    els.attributeTable.innerHTML = keys.map(function (k) {
+    els.attributeTableBody.innerHTML = keys.map(function (k) {
       return "<tr><td>" + escapeHtml(k) + "</td><td>" + escapeHtml(props[k]) + "</td></tr>";
     }).join("");
   }
@@ -203,33 +199,32 @@
   }
 
   function getFeatureStyle(feature, item) {
-    const featureStyle = feature && feature.properties && feature.properties._style ? feature.properties._style : null;
-    const useFeatureStyle = item.styleMode === "feature" && featureStyle;
+    const fs = feature && feature.properties && feature.properties._style ? feature.properties._style : null;
+    if (item.styleMode === "feature" && fs) {
+      return {
+        color: fs.color || item.color,
+        fillColor: fs.color || item.color,
+        weight: typeof fs.weight === "number" ? fs.weight : item.lineWeight,
+        fillOpacity: typeof fs.fillOpacity === "number" ? fs.fillOpacity : item.fillOpacity
+      };
+    }
     return {
-      color: useFeatureStyle && featureStyle.color ? featureStyle.color : item.color,
-      fillColor: useFeatureStyle && featureStyle.color ? featureStyle.color : item.color,
-      weight: useFeatureStyle && typeof featureStyle.weight === "number" ? featureStyle.weight : item.lineWeight,
-      fillOpacity: useFeatureStyle && typeof featureStyle.fillOpacity === "number" ? featureStyle.fillOpacity : item.fillOpacity
+      color: item.color,
+      fillColor: item.color,
+      weight: item.lineWeight,
+      fillOpacity: item.fillOpacity
     };
-  }
-
-  function applyStyleControlsFromLayer(item) {
-    els.styleModeSelect.value = item.styleMode || "layer";
-    els.styleColor.value = item.color || "#1f9bff";
-    els.styleFillOpacity.value = String(item.fillOpacity ?? 0.25);
-    els.styleLineWeight.value = String(item.lineWeight ?? 1.2);
   }
 
   function createLayer(item, targetGroup) {
     item.leafletLayer = L.geoJSON(item.geojson, {
-      renderer: canvasRenderer,
+      renderer: L.canvas({ padding: 0.5 }),
       style: function (feature) {
         return getFeatureStyle(feature, item);
       },
       pointToLayer: function (feature, latlng) {
         const style = getFeatureStyle(feature, item);
         return L.circleMarker(latlng, {
-          renderer: canvasRenderer,
           radius: 4,
           color: style.color,
           fillColor: style.fillColor,
@@ -242,19 +237,28 @@
           state.activeId = item.id;
           state.activeFeatureRef = { itemId: item.id, feature: feature };
           renderAttributeTable(feature.properties || {});
-          applyStyleControlsFromLayer(item);
-
-          if (item.styleMode === "feature" && feature.properties && feature.properties._style) {
-            const s = feature.properties._style;
-            if (s.color) els.styleColor.value = s.color;
-            if (typeof s.fillOpacity === "number") els.styleFillOpacity.value = String(s.fillOpacity);
-            if (typeof s.weight === "number") els.styleLineWeight.value = String(s.weight);
-          }
-
           renderSidebar();
         });
       }
     }).addTo(targetGroup);
+  }
+
+  function addItem(meta, geojson, saved, layerId, color, fillOpacity, lineWeight, styleMode, fitMap) {
+    const item = buildItem(meta, geojson, saved, layerId, color, fillOpacity, lineWeight, styleMode);
+
+    if (item.visible !== false) {
+      createLayer(item, saved ? savedGroup : unsavedGroup);
+    }
+
+    state.items.push(item);
+    state.activeId = item.id;
+    renderSidebar();
+
+    if (fitMap !== false && item.leafletLayer) {
+      fitToLayer(item.leafletLayer);
+    }
+
+    return item;
   }
 
   function fitToLayer(layer) {
@@ -268,14 +272,12 @@
   }
 
   function zoomAll() {
-    const group = L.featureGroup();
-    savedGroup.eachLayer(function (l) { group.addLayer(l); });
-    unsavedGroup.eachLayer(function (l) { group.addLayer(l); });
+    const g = L.featureGroup();
+    savedGroup.eachLayer(function (l) { g.addLayer(l); });
+    unsavedGroup.eachLayer(function (l) { g.addLayer(l); });
     try {
-      const bounds = group.getBounds();
-      if (bounds && bounds.isValid()) {
-        map.fitBounds(bounds, { padding: [40, 40] });
-      }
+      const bounds = g.getBounds();
+      if (bounds && bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
     } catch (e) {
     }
   }
@@ -320,11 +322,24 @@
         return new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0);
       })
       .forEach(function (item) {
-        const card = document.createElement("div");
         const count = countFeatures(item.geojson);
         const lockTxt = item.lockOwner ? ("Locked: " + item.lockOwner) : "Unlocked";
-
+        const card = document.createElement("div");
         card.className = "layer-card" + (state.activeId === item.id ? " active" : "");
+
+        const currentStyle =
+          state.activeFeatureRef &&
+          state.activeFeatureRef.itemId === item.id &&
+          state.activeFeatureRef.feature &&
+          state.activeFeatureRef.feature.properties &&
+          state.activeFeatureRef.feature.properties._style
+            ? state.activeFeatureRef.feature.properties._style
+            : null;
+
+        const styleColor = currentStyle && currentStyle.color ? currentStyle.color : item.color;
+        const styleFillOpacity = currentStyle && typeof currentStyle.fillOpacity === "number" ? currentStyle.fillOpacity : item.fillOpacity;
+        const styleWeight = currentStyle && typeof currentStyle.weight === "number" ? currentStyle.weight : item.lineWeight;
+
         card.innerHTML =
           '<div class="layer-top">' +
             '<div style="flex:1">' +
@@ -339,31 +354,65 @@
             '</div>' +
             '<div class="color-chip" style="background:' + item.color + '"></div>' +
           '</div>' +
+
           '<div class="layer-actions">' +
             '<button class="small-btn view">View</button>' +
             '<button class="small-btn toggle">' + (item.visible !== false ? "Hide" : "Show") + '</button>' +
             '<button class="small-btn edit">Edit</button>' +
             (item.saved ? ('<button class="small-btn lock">' + (item.lockOwner ? "Unlock" : "Lock") + '</button>') : "") +
             (item.saved ? "" : '<button class="small-btn save">Save</button>') +
-            '<button class="small-btn delete">' + (item.saved ? "Delete" : "Remove") + "</button>" +
-          "</div>";
+            '<button class="small-btn delete">' + (item.saved ? "Delete" : "Remove") + '</button>' +
+          '</div>' +
 
-        const btns = card.querySelectorAll("button");
+          '<div class="layer-style-box">' +
+            '<div class="layer-style-title">Style</div>' +
+            '<div class="layer-style-grid">' +
+              '<label class="field-label full">' +
+                '<span>Mode</span>' +
+                '<select class="style-mode">' +
+                  '<option value="layer"' + (item.styleMode === "layer" ? " selected" : "") + '>Shared layer style</option>' +
+                  '<option value="feature"' + (item.styleMode === "feature" ? " selected" : "") + '>Selected feature style</option>' +
+                '</select>' +
+              '</label>' +
+              '<label class="field-label">' +
+                '<span>Color</span>' +
+                '<input class="style-color" type="color" value="' + escapeHtml(styleColor) + '">' +
+              '</label>' +
+              '<label class="field-label">' +
+                '<span>Fill Opacity</span>' +
+                '<input class="style-fill" type="range" min="0" max="1" step="0.05" value="' + escapeHtml(String(styleFillOpacity)) + '">' +
+              '</label>' +
+              '<label class="field-label full">' +
+                '<span>Line Weight</span>' +
+                '<input class="style-weight" type="range" min="1" max="8" step="0.5" value="' + escapeHtml(String(styleWeight)) + '">' +
+              '</label>' +
+              '<button class="small-btn save full style-apply">Apply Style</button>' +
+            '</div>' +
+          '</div>';
+
+        const buttons = card.querySelectorAll(".layer-actions button");
         let i = 0;
-        btns[i++].onclick = function () {
-          state.activeId = item.id;
-          applyStyleControlsFromLayer(item);
-          focusItem(item.id);
+        buttons[i++].onclick = function () { focusItem(item.id); };
+        buttons[i++].onclick = function () { toggleVisibility(item.id); };
+        buttons[i++].onclick = function () { enableEdit(item.id); };
+        if (item.saved) buttons[i++].onclick = function () { toggleLock(item.id); };
+        if (!item.saved) buttons[i++].onclick = function () { saveItem(item.id); };
+        buttons[i++].onclick = function () { removeItem(item.id); };
+
+        const modeEl = card.querySelector(".style-mode");
+        const colorEl = card.querySelector(".style-color");
+        const fillEl = card.querySelector(".style-fill");
+        const weightEl = card.querySelector(".style-weight");
+        const applyEl = card.querySelector(".style-apply");
+
+        applyEl.onclick = function () {
+          applyStyleToItem(item.id, {
+            mode: modeEl.value,
+            color: colorEl.value,
+            fillOpacity: parseFloat(fillEl.value),
+            weight: parseFloat(weightEl.value)
+          });
         };
-        btns[i++].onclick = function () { toggleVisibility(item.id); };
-        btns[i++].onclick = function () {
-          state.activeId = item.id;
-          applyStyleControlsFromLayer(item);
-          enableEdit(item.id);
-        };
-        if (item.saved) btns[i++].onclick = function () { toggleLock(item.id); };
-        if (!item.saved) btns[i++].onclick = function () { saveItem(item.id); };
-        btns[i++].onclick = function () { removeItem(item.id); };
 
         els.layerList.appendChild(card);
       });
@@ -436,15 +485,15 @@
     };
 
     if (item.layerId) {
-      const result = await supabaseClient
+      const updated = await supabaseClient
         .from(AppConfig.layersTable)
         .update(payload)
         .eq("id", item.layerId)
         .select("id")
         .single();
 
-      if (result.error) throw result.error;
-      return result.data.id;
+      if (updated.error) throw updated.error;
+      return updated.data.id;
     }
 
     payload.created_at = new Date().toISOString();
@@ -460,12 +509,12 @@
   }
 
   async function replaceFeatures(layerId, geojson) {
-    const deleteResult = await supabaseClient
+    const removed = await supabaseClient
       .from(AppConfig.featuresTable)
       .delete()
       .eq("layer_id", layerId);
 
-    if (deleteResult.error) throw deleteResult.error;
+    if (removed.error) throw removed.error;
 
     const rows = splitFeatureCollection(geojson).map(function (feature) {
       return {
@@ -481,11 +530,11 @@
 
     if (!rows.length) return;
 
-    const insertResult = await supabaseClient
+    const inserted = await supabaseClient
       .from(AppConfig.featuresTable)
       .insert(rows);
 
-    if (insertResult.error) throw insertResult.error;
+    if (inserted.error) throw inserted.error;
   }
 
   async function saveItem(id) {
@@ -525,12 +574,12 @@
 
     try {
       if (item.saved && item.layerId) {
-        const result = await supabaseClient
+        const deleted = await supabaseClient
           .from(AppConfig.layersTable)
           .delete()
           .eq("id", item.layerId);
 
-        if (result.error) throw result.error;
+        if (deleted.error) throw deleted.error;
       }
 
       removeLeafletLayer(item);
@@ -560,7 +609,7 @@
       return;
     }
 
-    const result = await supabaseClient
+    const changed = await supabaseClient
       .from(AppConfig.layersTable)
       .update({
         visible: item.visible === false ? true : false,
@@ -568,7 +617,7 @@
       })
       .eq("id", item.layerId);
 
-    if (result.error) alert("Visibility error: " + result.error.message);
+    if (changed.error) alert("Visibility error: " + changed.error.message);
   }
 
   async function toggleLock(id) {
@@ -584,7 +633,7 @@
 
     const nextOwner = item.lockOwner ? null : currentUser();
 
-    const result = await supabaseClient
+    const changed = await supabaseClient
       .from(AppConfig.layersTable)
       .update({
         lock_owner: nextOwner,
@@ -593,54 +642,55 @@
       })
       .eq("id", item.layerId);
 
-    if (result.error) alert("Lock error: " + result.error.message);
+    if (changed.error) alert("Lock error: " + changed.error.message);
   }
 
-  function findActiveItem() {
-    return state.items.find(function (x) { return x.id === state.activeId; }) || null;
-  }
-
-  async function applyStyleChange() {
-    const item = findActiveItem();
-    if (!item) {
-      alert("Select a layer first.");
-      return;
-    }
+  async function applyStyleToItem(itemId, styleValues) {
+    const item = state.items.find(function (x) { return x.id === itemId; });
+    if (!item) return;
 
     if (item.saved && !canEdit(item)) {
       alert("Layer locked by: " + item.lockOwner);
       return;
     }
 
-    const styleMode = els.styleModeSelect.value;
-    const color = els.styleColor.value;
-    const fillOpacity = parseFloat(els.styleFillOpacity.value);
-    const lineWeight = parseFloat(els.styleLineWeight.value);
-
-    if (styleMode === "layer") {
+    if (styleValues.mode === "layer") {
       item.styleMode = "layer";
-      item.color = color;
-      item.fillOpacity = fillOpacity;
-      item.lineWeight = lineWeight;
+      item.color = styleValues.color;
+      item.fillOpacity = styleValues.fillOpacity;
+      item.lineWeight = styleValues.weight;
     } else {
       item.styleMode = "feature";
+
       if (!state.activeFeatureRef || state.activeFeatureRef.itemId !== item.id) {
-        alert("Select a feature on the map first.");
+        alert("Select a feature from this layer first.");
         return;
       }
-      const feature = state.activeFeatureRef.feature;
-      feature.properties = feature.properties || {};
-      feature.properties._style = {
-        color: color,
-        fillOpacity: fillOpacity,
-        weight: lineWeight
+
+      state.activeFeatureRef.feature.properties = state.activeFeatureRef.feature.properties || {};
+      state.activeFeatureRef.feature.properties._style = {
+        color: styleValues.color,
+        fillOpacity: styleValues.fillOpacity,
+        weight: styleValues.weight
       };
     }
 
     removeLeafletLayer(item);
     if (item.visible !== false) createLayer(item, item.saved ? savedGroup : unsavedGroup);
     renderSidebar();
-    setStatus("Style updated" + (item.saved ? " - click Save Selected to publish changes" : ""));
+
+    if (item.saved) {
+      try {
+        await saveLayerRow(item);
+        await replaceFeatures(item.layerId, item.geojson);
+        setStatus("Shared style updated");
+      } catch (err) {
+        alert("Style save error: " + err.message);
+        setStatus("Style update failed");
+      }
+    } else {
+      setStatus("Unsaved layer style updated");
+    }
   }
 
   async function loadAllRows() {
@@ -733,8 +783,6 @@
         state.channel = null;
       }
 
-      state.channel = supabaseClient.channel("gis-live-sync");
-
       async function reloadShared() {
         const rows = await loadAllRows();
         syncSavedRows(rows);
@@ -745,13 +793,12 @@
         setStatus("Database synced");
       }
 
+      state.channel = supabaseClient.channel("gis-live-sync");
       state.channel
         .on("postgres_changes", { event: "*", schema: "public", table: AppConfig.layersTable }, reloadShared)
         .on("postgres_changes", { event: "*", schema: "public", table: AppConfig.featuresTable }, reloadShared)
         .subscribe(async function (status) {
-          if (status === "SUBSCRIBED") {
-            await reloadShared();
-          }
+          if (status === "SUBSCRIBED") await reloadShared();
         });
     } catch (err) {
       alert("Database sync error: " + err.message);
@@ -772,7 +819,9 @@
     const kmlName = Object.keys(zip.files).find(function (name) {
       return name.toLowerCase().endsWith(".kml");
     });
+
     if (!kmlName) throw new Error("No KML found inside KMZ.");
+
     const text = await zip.file(kmlName).async("string");
     return parseKmlText(text);
   }
@@ -805,15 +854,12 @@
     if (kmzFile) {
       return { name: kmzFile.name, sourceType: "KMZ", geojson: await parseKmz(await kmzFile.arrayBuffer()) };
     }
-
     if (kmlFile) {
       return { name: kmlFile.name, sourceType: "KML", geojson: await parseKmlText(await kmlFile.text()) };
     }
-
     if (zipFile) {
       return { name: zipFile.name, sourceType: "ZIP Shapefile", geojson: normalizeGeoJson(await shp(await zipFile.arrayBuffer())) };
     }
-
     if (sourceType === "SHP") {
       const shpFile = list.find(function (f) { return /\.shp$/i.test(f.name); });
       return { name: shpFile.name, sourceType: "SHP", geojson: await parseShpFamily(list) };
@@ -846,7 +892,8 @@
         getColorBySource(result.sourceType),
         0.25,
         1.2,
-        "layer"
+        "layer",
+        true
       );
       setStatus("Imported: " + result.name);
     } catch (err) {
@@ -917,7 +964,8 @@
       getColorBySource("Draw"),
       0.25,
       1.2,
-      "layer"
+      "layer",
+      true
     );
     enableEdit(state.activeId);
   });
@@ -960,13 +1008,12 @@
   els.zoomAllBtn.addEventListener("click", zoomAll);
   els.searchBox.addEventListener("input", renderSidebar);
   els.visibilityFilter.addEventListener("change", renderSidebar);
+
   els.clearSelectionBtn.addEventListener("click", function () {
     state.activeId = null;
     clearAttributeTable();
     renderSidebar();
   });
-
-  els.applyStyleBtn.addEventListener("click", applyStyleChange);
 
   els.toggleSidebar.addEventListener("click", function () {
     toggleSidebarView(false);
