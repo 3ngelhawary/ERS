@@ -20,7 +20,7 @@
           <div class="brand-icon">GIS</div>
           <div class="brand-text">
             <h1>GIS Pro Shared DB</h1>
-            <p>Real-time layers, edit lock, attribute table</p>
+            <p>Real-time layers, groups, styles, attribute table</p>
           </div>
         </div>
         <button class="collapse-btn" id="toggleSidebar" type="button">☰</button>
@@ -32,6 +32,7 @@
           <input id="userName" type="text" placeholder="User name (required for save/edit)" />
           <input id="adminCode" type="password" placeholder="Admin code" />
           <input id="datasetCategory" type="text" placeholder="Layer category" />
+          <input id="datasetGroup" type="text" placeholder="Layer group / folder" value="General" />
         </div>
       </section>
 
@@ -69,12 +70,12 @@
 
       <section class="panel">
         <div class="panel-head">
-          <h2>Layers</h2>
+          <h2>Layer Tree</h2>
           <span id="dbCountBadge" class="badge">0</span>
         </div>
 
-        <input id="searchBox" class="search-box" type="text" placeholder="Search title, category, owner" />
-        <div id="layerList" class="layer-list"></div>
+        <input id="searchBox" class="search-box" type="text" placeholder="Search title, category, owner, group" />
+        <div id="layerTree" class="layer-tree"></div>
       </section>
 
       <section class="panel">
